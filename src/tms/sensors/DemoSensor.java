@@ -108,4 +108,39 @@ public abstract class DemoSensor implements TimedItem {
                         Arrays.stream(this.data).mapToObj(String::valueOf)
                                 .toArray(String[]::new)));
     }
+
+    /**
+     * Returns true if and only if this sensor is equal to the other given
+     * sensor.
+     *
+     * For two sensors to be equal, the must have:
+     *
+     * 1) the same type (ie. the same subclass of DemoSensor)
+     * 2) the same threshold value
+     * 3) the same data values array (each data value should match)
+     *
+     * Overrides equals in class Object
+     * @param obj other object to compare equality
+     * @return true if equal, false otherwise
+     */
+    public boolean equals(Object obj){
+        return false;
+        // TODO: implement logic for this method
+    }
+
+    /**
+     * Returns the hashcode of this object
+     *
+     * For two sensors hashcodes will be equal if they have:
+     * 1) The same type (ie. the same subclass of DemoSensor)
+     * 2) The same type of threshold value
+     * 3) The same data values array (each data value should match)
+     *
+     * Overrides hashCode in class Object
+     * @return int hashcode of this object.
+     */
+    public int hashCode(){
+        return 0;
+        // TODO: implement logic for this method
+    }
 }

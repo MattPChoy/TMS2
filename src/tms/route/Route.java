@@ -1,6 +1,7 @@
 package tms.route;
 
 import tms.intersection.Intersection;
+import tms.network.NetworkInitialiser;
 import tms.sensors.DemoPressurePad;
 import tms.sensors.Sensor;
 import tms.util.DuplicateSensorException;
@@ -46,6 +47,8 @@ public class Route {
         this.from = from;
         this.defaultSpeed = defaultSpeed;
         sensors = new ArrayList<>();
+
+        // TODO: implement the additional logic for this method
     }
 
     /**
@@ -236,5 +239,57 @@ public class Route {
             str += System.lineSeparator() + sensorLine;
         }
         return str;
+    }
+
+    /**
+     * Get the congestion level reported by sensors on this route.
+     *
+     * By default, an AveragingCongestionCalculator should be used to find the
+     * route's congestion level. See CongestionCalculator.calculateCongestion().
+     *
+     * @return the congestion level on this route as returned by the calculator
+     */
+    public int getCongestion(){
+        return 0;
+        // TODO implement the logic for this method
+    }
+
+    /**
+     * Returns true if and only if this route is equal to the other given route.
+     *
+     * For two routes to be equal they must:
+     * 1) have the same identifier string
+     * 2) have the same default speed
+     * 3) either both have a traffic light or both have no traffic signal
+     * 4) have the same traffic light signal status (GREEN, RED etc)
+     * 5) either both have an electronic speed sign or both have no electronic
+     *    speed sign
+     * 6) have the same electronic speed sign
+     * 7) have the same sensors (comparison should make use of each sensor's
+     *    equals() method, directly or indirectly).
+     *
+     * Overrides equals in class Object
+     *
+     * @param obj other object to compare equality
+     * @return true if equal, false otherwise
+     */
+    @Override
+    public boolean equals(Object obj){
+        return false;
+        // TODO implement the logic for this method
+    }
+
+    /**
+     * Returns the hash code of this route.
+     *
+     * Two routes that are equal must have the same hash code.
+     *
+     * Overrides hashCode in class Object
+     *
+     * @return has code of the route
+     */
+    @Override
+    public int hashCode(){
+        return 0;
     }
 }
