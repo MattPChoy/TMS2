@@ -3,6 +3,7 @@ package tms.intersection;
 import tms.route.Route;
 import tms.route.TrafficSignal;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,6 +14,8 @@ import java.util.List;
  */
 public class IntersectionLights {
     private int yellowTime, duration;
+    private List<Route> connections;
+    private int time = 0;
 
     /**
      * Creates a new set of traffic lights at an intersection.
@@ -27,11 +30,13 @@ public class IntersectionLights {
                               int duration){
         this.yellowTime = yellowTime;
         this.duration = duration;
+        this.connections  = connections;
         connections.get(0).setSignal(TrafficSignal.GREEN);
     }
 
     /**
-     * Returns the time in seconds for which a traffic light will appear yellow when transitioning from green to red.
+     * Returns the time in seconds for which a traffic light will appear yellow
+     * when transitioning from green to red.
      *
      * @return yellow time in seconds for this set of traffic lights
      */
@@ -74,7 +79,9 @@ public class IntersectionLights {
      * elapse and the call should simply return without changing anything
      */
     public void oneSecond(){
+        //TODO: Implement the logic for this method.
 
+        time++;
     }
 
     /**
@@ -92,6 +99,43 @@ public class IntersectionLights {
      */
     @Override
     public String toString(){
-        return null; //TODO: Remove Stub
+        return duration + ":" + parseList(getIncomingIntersections());
+        // method.
+    }
+
+    /***
+     * A method to return a list of Intersections which have an incoming
+     * route to this set of traffic lights, in the order given to the
+     * IntersectionLights' construtor.
+     *
+     * @return A list of intersections which have incoming routes to this
+     * intersection (in the order passed to the IntersectionLights'
+     * constructor).
+     */
+    private List<Intersection> getIncomingIntersections(){
+        List<Intersection> originIntersections = new ArrayList<>();
+
+        for (Route r: connections){
+            Intersection from = r.getFrom();
+
+            originIntersections.add(from);
+        }
+
+        return originIntersections;
+    }
+
+    /**
+     * A method which turns a list object into a string of comma delimited
+     * values
+     */
+    private String parseList(List<Intersection> originIntersections){
+        List<String> intersectionIDs = new ArrayList<>();
+
+        for (Intersection i: originIntersections){
+            intersectionIDs.add(i.getId());
+        }
+
+
+        return String.join(",", intersectionIDs);
     }
 }
