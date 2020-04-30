@@ -18,6 +18,8 @@ public class DemoVehicleCount extends DemoSensor implements VehicleCount {
      *
      * @return the current rate of traffic flow in vehicles/minute reported
      * by the vehicle count
+     *
+     * Note @1082 on Piazza
      */
     public int countTraffic(){
         return this.getCurrentValue();

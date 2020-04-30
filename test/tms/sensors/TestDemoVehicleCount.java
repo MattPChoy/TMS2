@@ -43,4 +43,34 @@ public class TestDemoVehicleCount {
         }
     }
 
+    @Test
+    public void testDataRoundingLower(){
+        // Check that numbers ending in decimals between *.0 and *.49* are
+        // rounded down
+
+        int[] data = new int[] {40};
+
+        DemoVehicleCount d = new DemoVehicleCount(
+                data,
+                111
+        );
+
+        assertEquals(64, d.getCongestion());
+    }
+
+    @Test
+    public void testDataRoundingUpper(){
+        // Check that numbers ending in decimals between .5* to .99* are
+        // rounded up the the integer above
+
+        int[] data = new int[] {53};
+
+        DemoVehicleCount d = new DemoVehicleCount(
+                data,
+                111
+        );
+
+        assertEquals(52, d.getCongestion());
+
+    }
 }
