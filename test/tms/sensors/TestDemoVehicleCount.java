@@ -2,7 +2,6 @@ package tms.sensors;
 
 import org.junit.Before;
 import org.junit.Test;
-import tms.sensors.DemoVehicleCount;
 import tms.util.TimedItemManager;
 
 import static org.junit.Assert.assertEquals;
