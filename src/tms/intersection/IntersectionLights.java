@@ -22,7 +22,6 @@ public class IntersectionLights implements TimedItem {
     // yellow signal.
     private int activeIndex;
     private int cycleTime;
-    private boolean verbose = true; //TODO REMOVE THIS
 
     /**
      * Creates a new set of traffic lights at an intersection.
@@ -113,105 +112,20 @@ public class IntersectionLights implements TimedItem {
                                              // doing anything.
         int mTime = time % duration;
 
-
-
-        List<String> output = new ArrayList<>();
-        output.add("R");
-        output.add("R");
-        output.add("R");
-        output.add("R");
-
-        if (0 <= mTime && mTime <= 7){
-            System.out.println(time+ " GREEN");
-
-            switch(activeIndex){
-                case 0:
-                    System.out.println("Setting " + activeIndex + " GREEN0");
-                    connections.get(0).getTrafficLight().setSignal(TrafficSignal.GREEN);
-                    connections.get(1).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(2).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(3).getTrafficLight().setSignal(TrafficSignal.RED);
-                    break;
-                case 1:
-                    System.out.println("Setting " + activeIndex + " GREEN1");
-                    connections.get(0).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(1).getTrafficLight().setSignal(TrafficSignal.GREEN);
-                    connections.get(2).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(3).getTrafficLight().setSignal(TrafficSignal.RED);
-                    break;
-                case 2:
-                    System.out.println("Setting " + activeIndex + " GREEN2");
-                    connections.get(0).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(1).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(2).getTrafficLight().setSignal(TrafficSignal.GREEN);
-                    connections.get(3).getTrafficLight().setSignal(TrafficSignal.RED);
-                    break;
-                case 3:
-                    System.out.println("Setting " + activeIndex + " GREEN3");
-                    connections.get(0).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(1).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(2).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(3).getTrafficLight().setSignal(TrafficSignal.GREEN);
-                    break;
-            }
+        if (0 <= mTime && mTime <= 7) {
+            setTrafficLights(TrafficSignal.GREEN);
         }
-        if (8 <= mTime && mTime <= 14){
-            System.out.println(time+ " YELLOW");
-            switch(activeIndex){
-                case 0:
-                    System.out.println("Setting " + activeIndex + " YELLOW0");
-                    connections.get(0).getTrafficLight().setSignal(TrafficSignal.YELLOW);
-                    connections.get(1).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(2).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(3).getTrafficLight().setSignal(TrafficSignal.RED);
-                    break;
-                case 1:
-                    System.out.println("Setting " + activeIndex + " YELLOW1");
-                    connections.get(0).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(1).getTrafficLight().setSignal(TrafficSignal.YELLOW);
-                    connections.get(2).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(3).getTrafficLight().setSignal(TrafficSignal.RED);
-                    break;
-                case 2:
-                    System.out.println("Setting " + activeIndex + " YELLOW2");
-                    connections.get(0).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(1).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(2).getTrafficLight().setSignal(TrafficSignal.YELLOW);
-                    connections.get(3).getTrafficLight().setSignal(TrafficSignal.RED);
-                    break;
-                case 3:
-                    System.out.println("Setting " + activeIndex + " YELLOW3");
-                    connections.get(0).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(1).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(2).getTrafficLight().setSignal(TrafficSignal.RED);
-                    connections.get(3).getTrafficLight().setSignal(TrafficSignal.YELLOW);
-                    break;
-            }
+        if (8 <= mTime && mTime <= 14) {
+            setTrafficLights(TrafficSignal.YELLOW);
 
-            if (mTime == duration - 1){ // last one before mTime = 0
-                if (time == duration * connections.size() - 1){
+            if (mTime == duration - 1) { // last one before mTime = 0
+                if (time == duration * connections.size() - 1) {
                     activeIndex = 0;
                 } else activeIndex++;
             }
         }
 
         time++;
-        /*
-        if (time == 0){
-            // Initially, set all elements (besides the first, which is
-            // green) to TrafficSignal.RED.
-
-            for (int i = 0; i < connections.size(); i++){
-                if (i != 0){
-                    connections.get(i).setSignal(TrafficSignal.RED);
-                }
-            }
-        }
-
-        switchTrafficLights(); // Logic for switching light colours based
-                               // on time elapsed.
-        time++;
-        */
 
     }
 
@@ -230,8 +144,8 @@ public class IntersectionLights implements TimedItem {
      */
     @Override
     public String toString(){
-        return duration + ":" + parseList(getIncomingIntersections());
-        // method.
+        return duration + ":" + parseList(
+                getIncomingIntersections(connections));
     }
 
     /***
@@ -243,10 +157,12 @@ public class IntersectionLights implements TimedItem {
      * intersection (in the order passed to the IntersectionLights'
      * constructor).
      */
-    private List<Intersection> getIncomingIntersections(){
+    private static List<Intersection> getIncomingIntersections(
+            List<Route> connections){
+
         List<Intersection> originIntersections = new ArrayList<>();
 
-        for (Route r: connections){
+        for (Route r: connections) {
             Intersection from = r.getFrom();
 
             originIntersections.add(from);
@@ -256,41 +172,13 @@ public class IntersectionLights implements TimedItem {
     }
 
     /**
-    * A separate method used to partition the logic for switching the traffic
-     * lights.
-     */
-    private void switchTrafficLights() {
-
-        int greenTime = duration - yellowTime;
-        int modTime   = time % duration;
-
-        // if ((0 <= modTime) && (modTime <= greenTime - 1)){
-        if ((0 <= modTime) && (modTime <= 6)){
-            setLights(TrafficSignal.GREEN, activeIndex);
-
-            // When transitioning from GREEN -> YELLOW we do not need to
-            // switch the active index.
-        }
-        // else if ((yellowTime + 1) <= duration){
-        else if ((7) <= modTime){
-            if (modTime == 8) System.out.println("Setting to yellow");
-            setLights(TrafficSignal.YELLOW, activeIndex);
-
-            if (modTime == duration - 1){
-                System.out.println("SAI @ t=" + time);
-                setActiveIndex();
-            }
-        }
-    }
-
-    /**
      * A method which turns a list object into a string of comma delimited
-     * values
+     * values. Used in the toString method.
      */
-    private String parseList(List<Intersection> originIntersections) {
+    private static String parseList(List<Intersection> originIntersections) {
         List<String> intersectionIDs = new ArrayList<>();
 
-        for (Intersection i: originIntersections){
+        for (Intersection i: originIntersections) {
             intersectionIDs.add(i.getId());
         }
 
@@ -298,37 +186,116 @@ public class IntersectionLights implements TimedItem {
     }
 
     /**
-     * A method to iterate the active index and wrap it to the start if
-     * required.
+     * A method used to switch the signals of the traffic light objects.
      */
-    private void setActiveIndex(){
-        if (time % cycleTime == 0){
-            activeIndex = 0; // Reset the active light back to 0 if
-            // we have completed a cycle.
-        }
-        else{
-            activeIndex++; // Else normally iterate the active light.
-        }
-
-        System.out.println("Setting the active index to: " + activeIndex);
-    }
-
-    /**
-     * A method which sets the lights in the connections list.
-     * It sets the light at activeIndex with the given signal, and the others
-     * to red.
-     */
-    private void setLights(TrafficSignal signal, int activeIndex) {
-        if (time == 15) System.out.println("t=15");
-
-        for (int i = 0; i < connections.size() - 1; i++){
-            TrafficLight toSet = connections.get(i).getTrafficLight();
+    private void setTrafficLights(TrafficSignal signal){
+        for (int i = 0; i < connections.size(); i++){
+            TrafficLight lightToChange = connections.get(i).getTrafficLight();
 
             if (i == activeIndex){
-                toSet.setSignal(signal);
+                lightToChange.setSignal(signal);
             } else{
-                toSet.setSignal(TrafficSignal.RED);
+                lightToChange.setSignal(TrafficSignal.RED);
             }
         }
     }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
