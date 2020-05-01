@@ -2,6 +2,7 @@ package tms.intersection;
 
 import tms.route.Route;
 import tms.route.TrafficSignal;
+import tms.util.TimedItem;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +13,7 @@ import java.util.List;
  * For simplicity, traffic lights only allow one incoming route to be green at
  * any given time, with incoming traffic allowed to exit via any outbound route.
  */
-public class IntersectionLights {
+public class IntersectionLights implements TimedItem {
     private int yellowTime, duration;
     private List<Route> connections;
     private int time = 0;
@@ -31,7 +32,18 @@ public class IntersectionLights {
         this.yellowTime = yellowTime;
         this.duration = duration;
         this.connections  = connections;
+
+        for (Route r: connections){
+            if (r.getTrafficLight() == null){
+                r.addTrafficLight();
+            }
+        }
+
+        // Now that we have ensured that all routes have traffic lights, then
+        // we can safely set the traffic signal of the first element to
+        // TrafficSignal.GREEN.
         connections.get(0).setSignal(TrafficSignal.GREEN);
+
     }
 
     /**
@@ -81,7 +93,32 @@ public class IntersectionLights {
     public void oneSecond(){
         //TODO: Implement the logic for this method.
 
-        time++;
+        if (connections.size() != 0){
+            // Exit out of the method without doing anything.
+            if (time == 0){
+                // Initially, set all elements (besides the first, which is
+                // green) to TrafficSignal.RED.
+
+                for (int i = 0; i < connections.size(); i++){
+                    if (i != 0){
+                        connections.get(i).setSignal(TrafficSignal.RED);
+                    }
+                }
+            }
+
+            else {
+                if (time % duration >= 0 && time % duration < yellowTime){
+
+                }
+            }
+
+            time++;
+        }
+
+        // TODO @1103 on Piazza - whether to create traffic lights for each
+        //  intersection?
+
+
     }
 
     /**
