@@ -4,6 +4,7 @@ import org.junit.Before;
 import org.junit.Test;
 import tms.route.Route;
 import tms.route.TrafficSignal;
+import tms.util.TimedItemManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,12 +35,6 @@ public class IntersectionLightsTest {
         for (Route r: connections){
             r.addTrafficLight();
         }
-
-        IntersectionLights lights = new IntersectionLights(
-                connections,
-                7,
-                15
-        );
     }
 
     @Test
@@ -73,35 +68,42 @@ public class IntersectionLightsTest {
     }
 
     @Test
-    public void setDuration() {
-        int duration = 34;
-        int yellowTime = 13;
+    public void testSetDuration() {
+        int yellowTime = 7;
+        int duration = 10;
 
-        List<Route> connections = new ArrayList<>();
-        Intersection from = new Intersection("A");
-        connections.add(new Route("ID", from, 50));
+        assertEquals(4, connections.size());
 
-        lights = new IntersectionLights(connections, yellowTime, duration);
+        lights = new IntersectionLights(
+                connections,
+                yellowTime, duration
+        );
 
         String methodDuration = lights.toString().substring(0, integerLength(duration));
-
         assertEquals(Integer.toString(duration), methodDuration);
-    }
 
-    @Test
-    public void oneSecond(){
-        lights = new IntersectionLights(connections, 7, 15);
+        lights.setDuration(15);
 
-        for (int i = 0; i < 60; i++){
-            lights.oneSecond();
+        methodDuration = lights.toString().substring(0, integerLength(duration));
+        assertEquals(Integer.toString(15), methodDuration);
+
+        for (int i = 0; i < duration*1.5; i++){
+            TimedItemManager.getTimedItemManager().oneSecond();
         }
+
+        assertNotEquals(TrafficSignal.GREEN,
+                connections.get(0).getTrafficLight().getSignal());
+
+        lights.setDuration(15);
+
+        assertEquals(TrafficSignal.GREEN,
+                connections.get(0).getTrafficLight().getSignal());
     }
 
     @Test
-    public void oneSecond1() {
+    public void testOneSecond_testWith4Connections() {
         int yellowTime = 7;
         int duration = 15;
-        int greenTime = 8;
 
         assertEquals(4, connections.size());
 
@@ -114,41 +116,41 @@ public class IntersectionLightsTest {
             lights.oneSecond();
             if (0 <= time && time <= 7){
                 // We should expect GRRR
-                assertLights(0, TrafficSignal.GREEN, time);
+                assertLights(0, TrafficSignal.GREEN);
             }
 
             else if (8 <= time && time <=14){
                 // We should expect YRRR
-                assertLights(0, TrafficSignal.YELLOW, time);
+                assertLights(0, TrafficSignal.YELLOW);
             }
 
             else if (15 <= time && time <= 22){
                 // We should expect RGRR
-                assertLights(1, TrafficSignal.GREEN, time);
+                assertLights(1, TrafficSignal.GREEN);
             }
 
             else if (23 <= time && time <= 29){
                 // We should expect RYRR
-                assertLights(1, TrafficSignal.YELLOW, time);
+                assertLights(1, TrafficSignal.YELLOW);
             }
 
             else if (30 <= time && time <= 37){
                 // We should expect RRGR
-                assertLights(2, TrafficSignal.GREEN, time);
+                assertLights(2, TrafficSignal.GREEN);
             }
 
             else if (38 <= time && time <= 44){
                 // We should expect RRYR
-                assertLights(2, TrafficSignal.YELLOW, time);
+                assertLights(2, TrafficSignal.YELLOW);
             }
 
             else if (45 <= time && time < 52){
                 // We should expect RRRG
-                assertLights(3, TrafficSignal.GREEN, time);
+                assertLights(3, TrafficSignal.GREEN);
             }
 
             else if (53 <= time && time < 59){
-                assertLights(3, TrafficSignal.YELLOW, time);
+                assertLights(3, TrafficSignal.YELLOW);
             }
 
         }
@@ -175,7 +177,6 @@ public class IntersectionLightsTest {
         intersections.add(from3);
         intersections.add(from4);
 
-
         lights = new IntersectionLights(
                 connections,
                 yellowTime,
@@ -183,8 +184,16 @@ public class IntersectionLightsTest {
         );
 
         String expected = duration + ":A,B,C,D";
-
         assertEquals(expected, lights.toString());
+
+        assertEquals(TrafficSignal.GREEN,
+                connections.get(0).getTrafficLight().getSignal());
+        assertEquals(TrafficSignal.RED,
+                connections.get(1).getTrafficLight().getSignal());
+        assertEquals(TrafficSignal.RED,
+                connections.get(2).getTrafficLight().getSignal());
+        assertEquals(TrafficSignal.RED,
+                connections.get(3).getTrafficLight().getSignal());
     }
 
     /**
@@ -198,20 +207,15 @@ public class IntersectionLightsTest {
      * A method used for the oneSecond test method. Used to assert that a
      * given light has a certain signal and the other lights are red.
      */
-    private void assertLights(int activeIndex, TrafficSignal signal, int time){
-        for (int i = 0; i < connections.size(); i++){
-            if (i == activeIndex){
-                assertEquals("ActiveIndex has incorrect value at time " + time,
-                        signal,
+    private void assertLights(int activeIndex, TrafficSignal signal){
+        for (int i = 0; i < connections.size(); i++) {
+            if (i == activeIndex) {
+                assertEquals(signal,
                         connections.get(i).getTrafficLight().getSignal());
-            }
-
-            else{
-                assertEquals("Index " + i + " has incorrect value at time " + time + " using AI of " + activeIndex,
-                        TrafficSignal.RED,
+            } else {
+                assertEquals(TrafficSignal.RED,
                         connections.get(i).getTrafficLight().getSignal());
             }
         }
     }
-
 }

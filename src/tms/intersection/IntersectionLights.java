@@ -4,6 +4,7 @@ import tms.route.Route;
 import tms.route.TrafficLight;
 import tms.route.TrafficSignal;
 import tms.util.TimedItem;
+import tms.util.TimedItemManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,16 +48,16 @@ public class IntersectionLights implements TimedItem {
         activeIndex = 0; // The first element in connections has been set to
         // green.
 
-        for (int i = 0; i < connections.size(); i++){
-            TrafficLight toSet = connections.get(i).getTrafficLight();
-
-            if (i == 0){
-                toSet.setSignal(TrafficSignal.GREEN);
-            }
-            else{
-                toSet.setSignal(TrafficSignal.RED);
+        for (Route r : connections){
+            if (r.getTrafficLight() == null){
+                r.addTrafficLight();
             }
         }
+
+        resetLights();
+
+        // Register as timed item
+        TimedItemManager.getTimedItemManager().registerTimedItem(this);
     }
 
     /**
@@ -81,6 +82,11 @@ public class IntersectionLights implements TimedItem {
      */
     public void setDuration(int duration){
         this.duration = duration;
+        this.time = 0;
+
+        System.out.println("Time reset in setDuration method");
+
+        resetLights();
     }
 
     /**
@@ -104,9 +110,7 @@ public class IntersectionLights implements TimedItem {
      * elapse and the call should simply return without changing anything
      */
     public void oneSecond(){
-        //TODO: Implement the logic for this method.
-
-        System.out.println("Prepping for "+ time);
+        System.out.println("OneSecond called! ");
 
         if (connections.size() == 0) return; // Exit out of the method without
                                              // doing anything.
@@ -199,102 +203,20 @@ public class IntersectionLights implements TimedItem {
         }
     }
 
+    private void resetLights(){
+        for (int i = 0; i < connections.size(); i++){
+            TrafficLight toSet = connections.get(i).getTrafficLight();
+
+            if (i == 0){
+//                toSet.setSignal(TrafficSignal.GREEN);
+                connections.get(0).setSignal(TrafficSignal.GREEN);
+            }
+            else{
+//                toSet.setSignal(TrafficSignal.RED);
+                connections.get(i).setSignal(TrafficSignal.RED);
+            }
+        }
+        System.out.println();
+    }
+
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
