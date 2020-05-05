@@ -2,6 +2,7 @@ package tms.intersection;
 
 import tms.network.NetworkInitialiser;
 import tms.route.Route;
+import tms.sensors.Sensor;
 import tms.util.InvalidOrderException;
 import tms.util.RouteNotFoundException;
 
@@ -20,6 +21,8 @@ public class Intersection {
     private String id;
     /** List of routes that terminate here. */
     private List<Route> incomingConnections;
+    private IntersectionLights intersectionLights; // Defaults to null if not
+    // set.
     /**
      * Amount by which to reduce the speed limit of speed signs on incoming
      * routes.
@@ -85,6 +88,31 @@ public class Intersection {
     }
 
     /**
+     * Sets the duration of each green-yellow cycle for this intersection's
+     * traffic lights.
+     *
+     * If the intersection has no traffic lights or if the given duration is
+     * invalid, an exception should be thrown and no action should be taken
+     *
+     * @param duration new duration to set
+     * @throws IllegalStateException if the intersection has no traffic lights.
+     * @throws IllegalArgumentException if duration is less than the traffic
+     * light's yellow time plus one.
+     */
+    public void setLightDuration(int duration) throws IllegalStateException{
+        if (!hasTrafficLights()){
+            // If there are no traffic lights, then throw an exception
+            throw new IllegalStateException();
+        } else if (duration < this.intersectionLights.getYellowTime() + 1){
+            throw new IllegalArgumentException();
+        }
+
+        // If code below this gets executed, then the two parameters have
+        // been validated.
+        this.intersectionLights.setDuration(duration);
+    }
+
+    /**
      * Creates a new Route originating from the given intersection and adds it
      * to our list of incoming routes.
      * <p>
@@ -123,8 +151,12 @@ public class Intersection {
                 from, defaultSpeed);
         incomingConnections.add(newRoute);
 
-        //TODO: Implement more logic for this method to finish implementation
-        // for assignment 2.
+        /* My edits? */
+
+        if (intersectionLights != null){
+            newRoute.addTrafficLight();
+        }
+
     }
 
     /**
@@ -191,8 +223,10 @@ public class Intersection {
      */
     @Override
     public String toString() {
+        if (hasTrafficLights()){
+            return id + ":" + this.intersectionLights.toString();
+        }
         return this.id;
-        // TODO: finish implementing logic for this method
     }
 
     /**
@@ -201,8 +235,7 @@ public class Intersection {
      *
      * @return whether this intersection has traffic lights*/
     public boolean hasTrafficLights(){
-        return false;
-        //TODO: implement logic for this method
+        return (intersectionLights != null);
     }
 
     /**
@@ -227,15 +260,38 @@ public class Intersection {
      * @param yellowTime time for which traffic lights appear yellow
      * @param duration time for which traffic lights appear green and yellow
      *
-     * @throws InvalidOrderException if yellowTime < 1 or if duration <
-     * yellowTime + 1
-     * @throws IllegalArgumentException if the order given is not a
-     * permutation of IncomingRoutes; or if order is empty.
+     * @throws InvalidOrderException if the order given is not a
+     *                               permutation of IncomingRoutes; or if order
+     *                               is empty.
+     * @throws IllegalArgumentException if yellowTime < 1 or if duration <
+     *                                  yellowTime + 1
      */ // TODO: Follow up on post @1078 on Piazza
     public void addTrafficLights(List<Route> order, int yellowTime,
                                  int duration)
-            throws InvalidOrderException, IllegalArgumentException{
-        // TODO: Implement logic for this method
+            throws InvalidOrderException, IllegalArgumentException {
+
+        // Validate yellowTime and Duration
+        if (yellowTime < 1 || duration < yellowTime + 1){
+            throw new IllegalArgumentException();
+        }
+
+        // Validate the order list.
+        if (order.size() == 0){
+            throw new InvalidOrderException("Improper list size");
+        }
+
+        if (!isPermutation(incomingConnections, order)){
+            throw new InvalidOrderException("Not a permutation of incoming" +
+                    " routes");
+        }
+
+        // Add traffic light to each incoming route.
+        for (Route r : incomingConnections){
+            r.addTrafficLight();
+        }
+
+        this.intersectionLights = new IntersectionLights(order, yellowTime,
+                duration);
     }
 
     /**
@@ -251,8 +307,10 @@ public class Intersection {
      * */
     @Override
     public boolean equals(Object obj){
+        if (obj instanceof Intersection){
+            return ((Intersection) obj).id.equals(this.id);
+        }
         return false;
-        // TODO: Implement logic for this method
     }
 
     /**
@@ -260,8 +318,38 @@ public class Intersection {
      * Two intersections that are equal must have the same hash code;
      */
     public int hashCode(){
-        // TODO: Implement logic for this method
-        return 0;
+        return this.getId().hashCode();
+    }
+
+    /**
+     * A method to determine if the list a is a permutation of list b
+     */
+    public static boolean isPermutation(List<Route> a, List<Route> b){
+        List<Route> firstList = a;
+        List<Route> secondList = b;
+
+        for(int i = 0; i < 2; i++){
+
+            if (i != 0){
+                firstList = b;
+                secondList = a;
+            }
+
+            for (Route firstRoute : firstList){
+                boolean found = false;
+
+                for (Route secondRoute : secondList){
+                    if (firstRoute.equals(secondRoute)){
+                        found = true;
+                    }
+                }
+
+                if (!found){
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
 

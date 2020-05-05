@@ -126,7 +126,6 @@ public class IntersectionLights implements TimedItem {
         }
 
         time++;
-
     }
 
     /**
