@@ -6,9 +6,7 @@ import tms.sensors.DemoPressurePad;
 import tms.sensors.Sensor;
 import tms.util.DuplicateSensorException;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Represents a one-way connection between two intersections.
@@ -258,8 +256,8 @@ public class Route {
      * Returns true if and only if this route is equal to the other given route.
      *
      * For two routes to be equal they must:
-     * 1) have the same identifier string
-     * 2) have the same default speed
+     * 1) have the same identifier string // done
+     * 2) have the same default speed // done
      * 3) either both have a traffic light or both have no traffic signal
      * 4) have the same traffic light signal status (GREEN, RED etc)
      * 5) either both have an electronic speed sign or both have no electronic
@@ -275,8 +273,17 @@ public class Route {
      */
     @Override
     public boolean equals(Object obj){
-        return false;
-        // TODO implement the logic for this method
+        if (!(obj instanceof Route)){
+            return false;
+        }
+
+        Route other = (Route) obj; // Can convert now we know that it is
+        // Route
+
+        return (compareParameters(this, other)
+                && compareParameters(this, other)
+                && compareTrafficLights(this, other)
+                && compareSignAndSensors(this, other));
     }
 
     /**
@@ -292,4 +299,96 @@ public class Route {
     public int hashCode(){
         return 0;
     }
+
+    /**
+     * First section of testing: comparing toString, speed sign, sensors
+     * @param a first route to compare for equality
+     * @param b second route to compare for equality
+     * @return whether routes are equal or not using these suite of tests.
+     */
+    public static boolean compareParameters(Route a, Route b){
+        if (a.toString().equals(b.toString())){
+            if (a.hasSpeedSign() == b.hasSpeedSign()){
+                List<Sensor> aSensors = a.getSensors();
+                List<Sensor> bSensors = b.getSensors();
+
+                if (compare(aSensors, bSensors)){
+                    // If the sensor lists are permutations
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Second section of testing: comparing they both have or don't have
+     * traffic lights.
+     * If they both have traffic lights then the signal must be the same.
+     * @param a first route to compare for equality
+     * @param b second route to compare for equality
+     * @return whether routes are equal or not using these suite of tests.
+     */
+    public static boolean compareTrafficLights(Route a, Route b){
+        boolean bothHave = a.getTrafficLight() != null
+                && b.getTrafficLight() != null;
+        boolean bothDontHave = a.getTrafficLight() == null &&
+                b.getTrafficLight() == null;
+
+        if (bothHave){
+            TrafficLight aLight = a.getTrafficLight();
+            TrafficLight bLight = b.getTrafficLight();
+            return aLight.getSignal() == bLight.getSignal();
+
+        } else return bothDontHave;
+    }
+
+    /**
+     * Third section of testing: comparing speed signs and sensors.
+     * If they have sensors, then the list of sensors must be permutations of
+     * each other.
+     * @param a first route to compare for equality
+     * @param b second route to compare for equality
+     * @return whether routes are equal or not using these suite of tests.
+     */
+    public static boolean compareSignAndSensors(Route a, Route b){
+        if (compare(a.getSensors(), b.getSensors())){
+            if ((a.hasSpeedSign() && b.hasSpeedSign())){
+                return a.getSpeed() == b.getSpeed();
+                // @1160 on Piazza
+            } else return !a.hasSpeedSign() && !b.hasSpeedSign();
+        }
+        return false;
+    }
+
+
+    public static boolean compare(List<Sensor> a, List<Sensor> b){
+        List<Sensor> firstList = a;
+        List<Sensor> secondList = b;
+
+        for(int i = 0; i < 2; i++){
+
+            if (i != 0){
+                firstList = b;
+                secondList = a;
+            }
+
+            for (Sensor firstSensor : firstList){
+                boolean found = false;
+
+                for (Sensor secondSensor : secondList){
+                    if (firstSensor.equals(secondSensor)){
+                        found = true;
+                    }
+                }
+
+                if (!found){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
 }
