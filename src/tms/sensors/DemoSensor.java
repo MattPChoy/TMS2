@@ -124,8 +124,19 @@ public abstract class DemoSensor implements TimedItem {
      * @return true if equal, false otherwise
      */
     public boolean equals(Object obj){
+        if (this instanceof DemoPressurePad && obj instanceof DemoPressurePad ||
+            this instanceof DemoSpeedCamera && obj instanceof DemoSpeedCamera ||
+            this instanceof DemoVehicleCount && obj instanceof DemoVehicleCount
+        ){
+            Sensor otherSensor = (Sensor) obj;
+
+            if (otherSensor.getThreshold() == this.getThreshold()){
+                if (otherSensor.toString().equals(this.toString())){
+                    return true;
+                }
+            }
+        }
         return false;
-        // TODO: implement logic for this method
     }
 
     /**
@@ -140,7 +151,22 @@ public abstract class DemoSensor implements TimedItem {
      * @return int hashcode of this object.
      */
     public int hashCode(){
-        return 0;
-        // TODO: implement logic for this method
+        int result = 16;
+
+        if (this instanceof DemoPressurePad){
+            result *= 2;
+        } else if (this instanceof DemoSpeedCamera){
+            result *= 3;
+        } else if (this instanceof DemoVehicleCount){
+            result *= 5;
+        }
+
+        result *= threshold;
+
+        for (int datum : data){
+            result *= datum;
+        }
+
+        return result;
     }
 }
