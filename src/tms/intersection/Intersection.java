@@ -281,6 +281,12 @@ public class Intersection {
         }
 
         if (!isPermutation(incomingConnections, order)){
+            for (Route r : incomingConnections){
+                System.out.print("incoming:" + r.toString());
+            }
+
+            System.out.println("P:"+order.size());
+
             throw new InvalidOrderException("Not a permutation of incoming" +
                     " routes");
         }
@@ -328,8 +334,15 @@ public class Intersection {
         List<Route> firstList = a;
         List<Route> secondList = b;
 
-        for(int i = 0; i < 2; i++){
+        if (firstList.size() == 0 || secondList.size() == 0){
+            return false; // To avoid a NPE
+        }
 
+        if (firstList.size() != secondList.size()){
+            return false;
+        }
+
+        for(int i = 0; i < firstList.size() - 1; i++){
             if (i != 0){
                 firstList = b;
                 secondList = a;
@@ -345,6 +358,8 @@ public class Intersection {
                 }
 
                 if (!found){
+                    // Pair not found for TestNetwork
+                    // .setYellowTime_existingUnedited() on line 68.
                     return false;
                 }
             }
