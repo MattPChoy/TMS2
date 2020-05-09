@@ -352,8 +352,9 @@ public class Intersection {
                 boolean found = false;
 
                 for (Route secondRoute : secondList){
-                    if (firstRoute.equals(secondRoute)){
+                    if (firstRoute.equals(secondRoute)) {
                         found = true;
+                        break;
                     }
                 }
 

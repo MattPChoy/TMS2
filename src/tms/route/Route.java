@@ -221,22 +221,22 @@ public class Route {
      */
     @Override
     public String toString() {
-        String str = String.format("%s%s%d%s%d",
+        StringBuilder str = new StringBuilder(String.format("%s%s%d%s%d",
                 this.id, NetworkInitialiser.LINE_INFO_SEPARATOR,
                 this.defaultSpeed, NetworkInitialiser.LINE_INFO_SEPARATOR,
-                this.sensors.size());
+                this.sensors.size()));
 
         if (this.speedSign != null) {
-            str += NetworkInitialiser.LINE_INFO_SEPARATOR
-                    + this.speedSign.getCurrentSpeed();
+            str.append(NetworkInitialiser.LINE_INFO_SEPARATOR)
+                    .append(this.speedSign.getCurrentSpeed());
         }
 
         String[] sensorLines = this.sensors.stream().map(Object::toString)
                 .sorted().toArray(String[]::new);
         for (String sensorLine : sensorLines) {
-            str += System.lineSeparator() + sensorLine;
+            str.append(System.lineSeparator()).append(sensorLine);
         }
-        return str;
+        return str.toString();
     }
 
     /**
@@ -312,10 +312,8 @@ public class Route {
                 List<Sensor> aSensors = a.getSensors();
                 List<Sensor> bSensors = b.getSensors();
 
-                if (compare(aSensors, bSensors)){
-                    // If the sensor lists are permutations
-                    return true;
-                }
+                // If the sensor lists are permutations
+                return compare(aSensors, bSensors);
             }
         }
 
@@ -378,8 +376,9 @@ public class Route {
                 boolean found = false;
 
                 for (Sensor secondSensor : secondList){
-                    if (firstSensor.equals(secondSensor)){
+                    if (firstSensor.equals(secondSensor)) {
                         found = true;
+                        break;
                     }
                 }
 

@@ -165,7 +165,7 @@ public class NetworkInitialiser {
      */
     public static int getIntersectionCount(List<String> file)
         throws InvalidNetworkException{
-        int numberOfIntersections = 0;
+        int numberOfIntersections;
 
         try{
             numberOfIntersections = Integer.parseInt(file.get(0));
@@ -187,7 +187,7 @@ public class NetworkInitialiser {
      */
     public static int getRouteCount(List<String> file)
             throws InvalidNetworkException{
-        int numberOfRoutes = 0;
+        int numberOfRoutes;
 
         try{
             numberOfRoutes = Integer.parseInt(file.get(1));
@@ -208,7 +208,7 @@ public class NetworkInitialiser {
      * be parsed as an integer.
      */
     public static int getYellowTime(List<String> file) throws InvalidNetworkException {
-        int yellowTime = 0;
+        int yellowTime;
 
         try{
             yellowTime = Integer.parseInt(file.get(2));
@@ -314,7 +314,7 @@ public class NetworkInitialiser {
      * A method that counts the instances of any delimiter character.
      * @param string the string for which to compare
      * @param delimiter the delimiter to count the instances of
-     * @returns number of occurrences of the delimiter in the string.
+     * @return number of occurrences of the delimiter in the string.
      */
     public static int countDelimiterInstances(String string, String delimiter){
         return (string.length() - string.replace(
@@ -462,11 +462,7 @@ public class NetworkInitialiser {
                 }
 
                 System.out.println("+ " + type + ":" + threshold + dataString);
-
             }
-
-
-
         }
     }
 
@@ -747,13 +743,9 @@ public class NetworkInitialiser {
             String fromID = splits[0];
             String toID = splits[1];
 
-            if (!(isValidIntersectionID(fromID)
-                    && isValidIntersectionID(toID))){
-//                System.out.println("Invalid to or from id" + fromID + "|" + toID);
-                return false;
-            }
-
-            return true;
+            //System.out.println("Invalid to or from id" + fromID + "|" + toID);
+            return isValidIntersectionID(fromID)
+                    && isValidIntersectionID(toID);
         }
 //        System.out.println("Invalid number of delimiters " + delimiterInstances);
         return false;
@@ -776,13 +768,7 @@ public class NetworkInitialiser {
             // Just intersectionID by itself, e.g. 'X'
             //return isValidIntersectionID(input);
 
-            if (isValidIntersectionID(input)){
-//                System.out.println(input + " - Valid intersection ID for single case");
-                return true;
-            } else{
-//                System.out.println(input + " - Invalid because of single id");
-                return false;
-            }
+            return isValidIntersectionID(input);
 
         }
         if (delimiterInstances == 2){
@@ -806,12 +792,7 @@ public class NetworkInitialiser {
                 return false;
             }
             String intersectionID = input.split(LINE_INFO_SEPARATOR)[0];
-            if (!isValidIntersectionID(intersectionID)){
-//                System.out.println("Invalid intersection id " + intersectionID);
-                return false;
-            }
-
-            return true;
+            return isValidIntersectionID(intersectionID);
         }
 //        System.out.println(input + " - Invalid because number of delimiter " +
 //                "characters - " + delimiterInstances);

@@ -62,7 +62,7 @@ public class TestNetwork {
     }
 
     @Test
-    public void setYellowTime_existingUnedited() throws IntersectionNotFoundException, InvalidOrderException, RouteNotFoundException {
+    public void setYellowTime_existingUnedited() throws IntersectionNotFoundException, InvalidOrderException {
         n.createIntersection("A");
         n.createIntersection("B");
         n.connectIntersections("A", "B", 30);
@@ -84,7 +84,7 @@ public class TestNetwork {
 /*----------------------------------------------------------------------------*/
     @Test
     public void testAddLights_intersectionNotFoundException()
-            throws InvalidOrderException, RouteNotFoundException {
+            throws InvalidOrderException {
         List<String> intersectionOrder = new ArrayList<>();
         intersectionOrder.add("A");
 
@@ -101,7 +101,7 @@ public class TestNetwork {
     }
 
     @Test
-    public void testAddLights_invalidOrderException_emptyList() throws IntersectionNotFoundException, RouteNotFoundException {
+    public void testAddLights_invalidOrderException_emptyList() throws IntersectionNotFoundException {
         n.createIntersection("A");
         boolean exceptionThrown = false;
         List<String> intersectionOrder = new ArrayList<>();
@@ -117,7 +117,7 @@ public class TestNetwork {
 
     @Test
     public void testAddLights_invalidOrderException_notPermutation()
-            throws IntersectionNotFoundException, RouteNotFoundException {
+            throws IntersectionNotFoundException {
         boolean exceptionThrown = false;
 
         n.createIntersection("to");
@@ -139,7 +139,9 @@ public class TestNetwork {
     }
 
     @Test
-    public void testAddLights_illegalDurationValue() throws IntersectionNotFoundException, RouteNotFoundException, InvalidOrderException        {
+    public void testAddLights_illegalDurationValue()
+            throws IntersectionNotFoundException, InvalidOrderException {
+
         boolean exceptionThrown = false;
 
         n.setYellowTime(10);
@@ -406,7 +408,8 @@ public class TestNetwork {
     }
 
     @Test
-    public void addSpeedSign_throwsRouteNotFoundException() throws IntersectionNotFoundException, RouteNotFoundException {
+    public void addSpeedSign_throwsRouteNotFoundException()
+            throws IntersectionNotFoundException {
         boolean exceptionThrown = false;
 
         n.createIntersection("A");
@@ -555,7 +558,7 @@ public class TestNetwork {
     }
 
     @Test
-    public void changeLightDuration_throwsIllegalArgumentException() throws IntersectionNotFoundException, InvalidOrderException, RouteNotFoundException {
+    public void changeLightDuration_throwsIllegalArgumentException() throws IntersectionNotFoundException, InvalidOrderException {
         boolean exceptionThrown = false;
 
         n.createIntersection("from");
@@ -651,7 +654,7 @@ public class TestNetwork {
     }
 
     @Test
-    public void addSensor_throwsIntersectionNotFoundException() throws IntersectionNotFoundException, DuplicateSensorException, RouteNotFoundException {
+    public void addSensor_throwsIntersectionNotFoundException() throws DuplicateSensorException, RouteNotFoundException {
         boolean exceptionThrown = false;
         try {
             n.addSensor("A", "B", new DemoSpeedCamera(new int[]{1}, 40));

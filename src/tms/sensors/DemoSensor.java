@@ -131,9 +131,7 @@ public abstract class DemoSensor implements TimedItem {
             Sensor otherSensor = (Sensor) obj;
 
             if (otherSensor.getThreshold() == this.getThreshold()){
-                if (otherSensor.toString().equals(this.toString())){
-                    return true;
-                }
+                return otherSensor.toString().equals(this.toString());
             }
         }
         return false;

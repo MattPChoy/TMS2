@@ -27,7 +27,7 @@ public class Network {
 
     /**
      * Returns the yellow time for all traffic lights in this network.
-     * @returns traffic light yellow time in seconds.
+     * @return traffic light yellow time in seconds.
      */
     public int getYellowTime(){
         return this.yellowTime;
@@ -489,25 +489,25 @@ public class Network {
     }
 
     private String routeStrings(){
-        String output = "";
+        StringBuilder output = new StringBuilder();
 
         if (connections.size() != 0){
             for (Route r : connections){
-                output += (r.toString() + LINE_BREAK);
+                output.append(r.toString()).append(LINE_BREAK);
             }
         }
-        return output.trim();
+        return output.toString().trim();
     }
 
     private String intersectionStrings(){
-        String output = "";
+        StringBuilder output = new StringBuilder();
 
         if (intersections.size() != 0){
             for (Intersection i : intersections){
-                output += (i.toString() + LINE_BREAK);
+                output.append(i.toString()).append(LINE_BREAK);
             }
         }
-        return output.trim();
+        return output.toString().trim();
     }
 
     /**
@@ -589,7 +589,10 @@ public class Network {
                 boolean found = false;
 
                 for (Route secondRoute : second){
-                    if (firstRoute.equals(secondRoute)) found = true;
+                    if (firstRoute.equals(secondRoute)) {
+                        found = true;
+                        break;
+                    }
                 }
 
                 if (!found){
@@ -623,7 +626,10 @@ public class Network {
                 boolean found = false;
 
                 for (Intersection second : secondList){
-                    if (first.equals(second)) found = true;
+                    if (first.equals(second)) {
+                        found = true;
+                        break;
+                    }
                 }
 
                 if (!found){

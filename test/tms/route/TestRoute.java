@@ -28,24 +28,23 @@ public class TestRoute {
         List<Sensor> list2 = new ArrayList<>();
 
         Intersection A = new Intersection("A");
-        Route r = new Route("ID", A, 40);
 
         list1.add(s1);
 
-        assertFalse(r.compare(list1, list2));
+        assertFalse(Route.compare(list1, list2));
 
         list2.add(s1);
 
-        assertTrue(r.compare(list1,list2));
+        assertTrue(Route.compare(list1,list2));
 
         list1.add(s2); list1.add(s3); list1.add(s4); list1.add(s5);
         list2.add(s2); list2.add(s3); list2.add(s4);
-        boolean result = r.compare(list1, list2);
+        boolean result = Route.compare(list1, list2);
         System.out.print(result);
         assertFalse(result);
         list2.add(s5);
 
-        assertTrue(r.compare(list1, list2));
+        assertTrue(Route.compare(list1, list2));
     }
 
     @Test
