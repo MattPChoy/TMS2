@@ -1,22 +1,27 @@
 package tms.network;
 
 import tms.intersection.Intersection;
-import tms.route.Route;
 import tms.sensors.Sensor;
-import tms.util.DuplicateSensorException;
+import tms.route.Route;
+
 import tms.util.IntersectionNotFoundException;
-import tms.util.InvalidOrderException;
+import tms.util.DuplicateSensorException;
 import tms.util.RouteNotFoundException;
+import tms.util.InvalidOrderException;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class Network {
+    /** A list of all instantiated intersections in the network */
     private List<Intersection> intersections = new ArrayList<>();
-    private List<Route> connections = new ArrayList<>();
-    private final String LINE_BREAK = System.lineSeparator(); // For toString
-    int yellowTime = 1; // @1159
+    /** A list of all routes in the network */
+    private List<Route> routes = new ArrayList<>();
+    /** Line break constant for the toString method*/
+    private final String LINE_BREAK = System.lineSeparator();
+    /** When instantiated, the yellow time of a network should be 1 @1159*/
+    int yellowTime = 1;
 
     /**
      * Creates a new empty network with no intersections.
@@ -48,8 +53,8 @@ public class Network {
             throw new IllegalArgumentException();
         }
 
-        this.yellowTime = yellowTime;
         // Set yellow time
+        this.yellowTime = yellowTime;
     }
 
     /**
@@ -131,7 +136,7 @@ public class Network {
         if (!intersectionExists){ // If it hasn't been created yet
             intersectionTo.addConnection(intersectionFrom, defaultSpeed);
             try{
-                connections.add(intersectionTo.getConnection(intersectionFrom));
+                routes.add(intersectionTo.getConnection(intersectionFrom));
             } catch (RouteNotFoundException ignored){
 
             }
@@ -140,6 +145,8 @@ public class Network {
             throw new IllegalStateException("Route already exists");
         }
     }
+
+
     /**
      * Adds traffic lights to the intersection with the given ID.
      *
@@ -168,8 +175,8 @@ public class Network {
                           List<String> intersectionOrder) throws
             IntersectionNotFoundException, InvalidOrderException,
             IllegalArgumentException {
-        Intersection target = getIntersection(intersectionId);
-        
+        Intersection target = findIntersection(intersectionId);
+
         // Test if the intersectionOrder parameter is valid
         if (intersectionOrder.size() == 0){
             throw new InvalidOrderException("Length of the list is 0");
@@ -181,7 +188,7 @@ public class Network {
             // So it would be "from" another intersection (id) to intersectionID
             try {
                 incomingRoutes.add(this.getConnection(id, intersectionId));
-            } catch (RouteNotFoundException e){
+            } catch (RouteNotFoundException | IntersectionNotFoundException e){
                 // For a route to be an incoming route it has to be a route.
                 throw new InvalidOrderException("Cannot find route from "
                     + id + " to " + intersectionId);
@@ -276,7 +283,7 @@ public class Network {
      */
     public void changeLightDuration(String intersectionId, int duration)
             throws IntersectionNotFoundException{
-        Intersection target = getIntersection(intersectionId);
+        Intersection target = findIntersection(intersectionId);
 
         if (!target.hasTrafficLights()) throw new IllegalStateException();
         if (duration < getYellowTime() + 1)
@@ -298,8 +305,8 @@ public class Network {
     public Route getConnection(String from, String to)
             throws IntersectionNotFoundException, RouteNotFoundException{
 
-        Intersection intersectionFrom = getIntersection(from);
-        Intersection intersectionTo = getIntersection(to);
+        Intersection intersectionFrom = findIntersection(from);
+        Intersection intersectionTo = findIntersection(to);
 
         return intersectionTo.getConnection(intersectionFrom);
     }
@@ -456,7 +463,13 @@ public class Network {
      */
     @Override
     public int hashCode(){
-        return 7 * getIntersections().size();
+        int sum = 0;
+
+        for (Intersection i : intersections){
+            sum += i.getId().hashCode();
+        }
+
+        return sum;
     }
 
     /**
@@ -477,37 +490,12 @@ public class Network {
      * representation of a network.
      */
     public String toString(){
-        String output =
-                intersections.size() + LINE_BREAK +
-                        connections.size() + LINE_BREAK +
+        return (intersections.size() + LINE_BREAK +
+                        routes.size() + LINE_BREAK +
                         getYellowTime() + LINE_BREAK +
                         intersectionStrings() + LINE_BREAK +
-                        routeStrings() + LINE_BREAK;
-
-        List<Intersection> sortedIntersections = sortIntersections();
-        return output.trim() + LINE_BREAK;
-    }
-
-    private String routeStrings(){
-        StringBuilder output = new StringBuilder();
-
-        if (connections.size() != 0){
-            for (Route r : connections){
-                output.append(r.toString()).append(LINE_BREAK);
-            }
-        }
-        return output.toString().trim();
-    }
-
-    private String intersectionStrings(){
-        StringBuilder output = new StringBuilder();
-
-        if (intersections.size() != 0){
-            for (Intersection i : intersections){
-                output.append(i.toString()).append(LINE_BREAK);
-            }
-        }
-        return output.toString().trim();
+                        routeStrings())
+                .trim(); // Remove whitespace at EOF
     }
 
     /**
@@ -521,7 +509,12 @@ public class Network {
         return this.intersections;
     }
 
-    public List<Intersection> sortIntersections(){
+    /**
+     * A method to return all the intersection objects stored in the
+     * intersections object sorted by their respective IDs alphabetically.
+     * @return a list of intersections sorted alphabetically by ID
+     */
+    private List<Intersection> sortIntersections(){
         List<String> intersectionNames = new ArrayList<>();
         List<Intersection> sorted = new ArrayList<>();
 
@@ -542,32 +535,72 @@ public class Network {
         return sorted;
     }
 
-    public static boolean isWhitespace(String stringToCompare){
+    /**
+     * A method to return the all the routes as a concatenated string.
+     * @return concatenated string of routes.toString()
+     */
+    private String routeStrings(){
+        StringBuilder output = new StringBuilder();
+
+        if (routes.size() != 0){
+            for (Route r : routes){
+                output.append(r.toString()).append(LINE_BREAK);
+            }
+        }
+        return output.toString().trim();
+    }
+
+    /**
+     * A method to return all the intersections as a concatenated string.
+     * @return concatenated string of intersections.toString()
+     */
+    private String intersectionStrings(){
+        StringBuilder output = new StringBuilder();
+
+        if (intersections.size() != 0){
+            for (Intersection i : intersections){
+                output.append(i.toString()).append(LINE_BREAK);
+            }
+        }
+        return output.toString().trim();
+    }
+
+    /**
+     * A method to determine whether a string is entirely comprised of
+     * whitespace characters such as line breaks, tabs and spaces.
+     * @param stringToCompare the string to evaluate
+     * @return true if comprised entirely of whitespace, false otherwise.
+     */
+    private static boolean isWhitespace(String stringToCompare){
         return (stringToCompare.trim().equals(""));
     }
 
-    public Intersection getIntersection(String intersectionID)
-            throws IntersectionNotFoundException{
-
-        for (Intersection i : this.intersections){
-            if (i.getId().equals(intersectionID)){
-                return i;
-            }
-        }
-
-        throw new IntersectionNotFoundException("Intersection " + intersectionID
-                + " could not be found");
-
-    }
-
-    public Route getRoute(String from, String to) throws IntersectionNotFoundException, RouteNotFoundException {
-        Intersection _from = getIntersection(from);
-        Intersection _to   = getIntersection(to);
+    /**
+     *
+     * @param from the ID of the originating intersection
+     * @param to   the ID of the terminating intersection.
+     * @return Route object spanning from 'from' to 'to'
+     * @throws IntersectionNotFoundException if either intersection 'from' or
+     * 'to' are not found in the network
+     * @throws RouteNotFoundException if a route spanning from 'from' to 'to'
+     * is not found.
+     */
+    private Route getRoute(String from, String to) throws IntersectionNotFoundException, RouteNotFoundException {
+        Intersection _from = findIntersection(from);
+        Intersection _to   = findIntersection(to);
 
         return _to.getConnection(_from);
     }
 
-    public static boolean routePermutation(List<Route> a, List<Route> b){
+    /**
+     * A method used to determine whether two lists containing routes are
+     * permutations of each other. This definition of permutation requires
+     * the two lists to be of equal (and non-zero) size.
+     * @param a first list of routes to compare
+     * @param b second list of routes to compare
+     * @return true if routes are permutations of each other, false otherwise.
+     */
+    private static boolean routePermutation(List<Route> a, List<Route> b){
         List<Route> first = a;
         List<Route> second = b;
 
@@ -603,7 +636,15 @@ public class Network {
         return true;
     }
 
-    public static boolean intersectionPermutation(List<Intersection> a,
+    /**
+     * A method to return whether two lists of intersections are permutations
+     * of each other. This definition of permutation requires
+     * the two lists to be of equal (and non-zero) size.
+     * @param a first list of intersections to compare
+     * @param b second list of intersections to compare
+     * @return true if routes are permutations of each other, false otherwise.
+     */
+    private static boolean intersectionPermutation(List<Intersection> a,
                                      List<Intersection> b){
         List<Intersection> firstList = a;
         List<Intersection> secondList = b;

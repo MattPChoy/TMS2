@@ -2,7 +2,6 @@ package tms.intersection;
 
 import tms.network.NetworkInitialiser;
 import tms.route.Route;
-import tms.sensors.Sensor;
 import tms.util.InvalidOrderException;
 import tms.util.RouteNotFoundException;
 
@@ -11,7 +10,6 @@ import java.util.List;
 
 /**
  * Represents a point at which routes can originate and terminate.
- * <p>
  * All intersections have a unique identifier (ID), a list of incoming
  * connections and, optionally, a set of traffic lights.
  * @ass1_2
@@ -21,8 +19,9 @@ public class Intersection {
     private String id;
     /** List of routes that terminate here. */
     private List<Route> incomingConnections;
-    private IntersectionLights intersectionLights; // Defaults to null if not
-    // set.
+    /** Used manage the traffic lights associated with this intersection.
+     * Defaults to null if not set. */
+    private IntersectionLights intersectionLights;
     /**
      * Amount by which to reduce the speed limit of speed signs on incoming
      * routes.
@@ -99,9 +98,10 @@ public class Intersection {
      * @throws IllegalArgumentException if duration is less than the traffic
      * light's yellow time plus one.
      */
-    public void setLightDuration(int duration) throws IllegalStateException{
+    public void setLightDuration(int duration) {
         if (!hasTrafficLights()){
             // If there are no traffic lights, then throw an exception
+            // Do not need to add throws clause as it is a runtime exception.
             throw new IllegalStateException();
         } else if (duration < this.intersectionLights.getYellowTime() + 1){
             throw new IllegalArgumentException();
@@ -151,9 +151,7 @@ public class Intersection {
                 from, defaultSpeed);
         incomingConnections.add(newRoute);
 
-        /* My edits? */
-
-        if (intersectionLights != null){
+        if (intersectionLights != null) {
             newRoute.addTrafficLight();
         }
 
@@ -234,7 +232,7 @@ public class Intersection {
      * otherwise
      *
      * @return whether this intersection has traffic lights*/
-    public boolean hasTrafficLights(){
+    public boolean hasTrafficLights() {
         return (intersectionLights != null);
     }
 
@@ -271,30 +269,22 @@ public class Intersection {
             throws InvalidOrderException, IllegalArgumentException {
 
         // Validate yellowTime and Duration
-        if (yellowTime < 1 || duration < yellowTime + 1){
-            throw new IllegalArgumentException();
+        if (yellowTime < 1 || duration < yellowTime + 1) {
+            throw new IllegalArgumentException("Invalid yellow time or " +
+                    "duration value");
         }
 
         // Validate the order list.
-        if (order.size() == 0){
+        if (order.size() == 0) {
             throw new InvalidOrderException("Improper list size");
         }
 
-        if (!isPermutation(incomingConnections, order)){
-            for (Route r : incomingConnections){
-                System.out.print("incoming:" + r.toString());
-            }
-
-            System.out.println("P:"+order.size());
-
+        if (!isPermutation(incomingConnections, order)) {
             throw new InvalidOrderException("Not a permutation of incoming" +
                     " routes");
         }
 
-        // Add traffic light to each incoming route.
-        for (Route r : incomingConnections){
-            r.addTrafficLight();
-        }
+        incomingConnections = order;
 
         this.intersectionLights = new IntersectionLights(order, yellowTime,
                 duration);
@@ -314,7 +304,8 @@ public class Intersection {
     @Override
     public boolean equals(Object obj){
         if (obj instanceof Intersection){
-            return ((Intersection) obj).id.equals(this.id);
+            Intersection intersectionObject = (Intersection) obj;
+            return intersectionObject.getId().equals(this.id);
         }
         return false;
     }
@@ -324,13 +315,22 @@ public class Intersection {
      * Two intersections that are equal must have the same hash code;
      */
     public int hashCode(){
+        // Since the only criteria for the equality of an intersection is
+        // that the IDs are the same, then we can use ID as the 'seed' or 'base'
+        // for our hashcode. Since strings inherently have their own hashcode
+        // method, we can just use that.
         return this.getId().hashCode();
     }
 
     /**
-     * A method to determine if the list a is a permutation of list b
+     * A method to determine if the list a is a permutation of list b.
+     * This definition of permutation requires the lists to be of the same
+     * non-zero size.
+     * @param a first list of routes
+     * @param b second list of routes
+     * @return true if is permutation, false if not permutation.
      */
-    public static boolean isPermutation(List<Route> a, List<Route> b){
+    private static boolean isPermutation(List<Route> a, List<Route> b){
         List<Route> firstList = a;
         List<Route> secondList = b;
 
@@ -367,6 +367,4 @@ public class Intersection {
         }
         return true;
     }
-
-
 }

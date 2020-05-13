@@ -84,8 +84,6 @@ public class IntersectionLights implements TimedItem {
         this.duration = duration;
         this.time = 0;
 
-        System.out.println("Time reset in setDuration method");
-
         resetLights();
     }
 
@@ -110,16 +108,16 @@ public class IntersectionLights implements TimedItem {
      * elapse and the call should simply return without changing anything
      */
     public void oneSecond(){
-        System.out.println("OneSecond called! ");
-
+//        System.out.println("IntersectionLights' OneSecond Method Call");
         if (connections.size() == 0) return; // Exit out of the method without
                                              // doing anything.
         int mTime = time % duration;
+        int greenTime = duration - yellowTime;
 
-        if (0 <= mTime && mTime <= 7) {
+        if (0 <= mTime && mTime < greenTime) {
             setTrafficLights(TrafficSignal.GREEN);
         }
-        if (8 <= mTime && mTime <= 14) {
+        if (greenTime <= mTime && mTime <= duration) {
             setTrafficLights(TrafficSignal.YELLOW);
 
             if (mTime == duration - 1) { // last one before mTime = 0
@@ -203,20 +201,21 @@ public class IntersectionLights implements TimedItem {
         }
     }
 
+    /**
+     * A method used to reset the traffic lights when the duration of the
+     * traffic lights are changed.
+     */
     private void resetLights(){
         for (int i = 0; i < connections.size(); i++){
             TrafficLight toSet = connections.get(i).getTrafficLight();
 
             if (i == 0){
-//                toSet.setSignal(TrafficSignal.GREEN);
                 connections.get(0).setSignal(TrafficSignal.GREEN);
             }
             else{
-//                toSet.setSignal(TrafficSignal.RED);
                 connections.get(i).setSignal(TrafficSignal.RED);
             }
         }
-        System.out.println();
     }
 
 }

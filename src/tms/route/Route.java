@@ -1,5 +1,7 @@
 package tms.route;
 
+import tms.congestion.AveragingCongestionCalculator;
+import tms.congestion.CongestionCalculator;
 import tms.intersection.Intersection;
 import tms.network.NetworkInitialiser;
 import tms.sensors.DemoPressurePad;
@@ -29,6 +31,8 @@ public class Route {
     private TrafficLight trafficLight;
     /** Speed limit of this route if no electronic speed sign exists. */
     private int defaultSpeed;
+    /** Instance variable for the congestion calculator */
+    private AveragingCongestionCalculator congestionCalculator;
 
     /**
      * Creates a new route with the given ID, origin intersection and default
@@ -45,8 +49,7 @@ public class Route {
         this.from = from;
         this.defaultSpeed = defaultSpeed;
         sensors = new ArrayList<>();
-
-        // TODO: implement the additional logic for this method
+        congestionCalculator = new AveragingCongestionCalculator(sensors);
     }
 
     /**
@@ -248,8 +251,7 @@ public class Route {
      * @return the congestion level on this route as returned by the calculator
      */
     public int getCongestion(){
-        return 0;
-        // TODO implement the logic for this method
+        return congestionCalculator.calculateCongestion();
     }
 
     /**
@@ -306,7 +308,7 @@ public class Route {
      * @param b second route to compare for equality
      * @return whether routes are equal or not using these suite of tests.
      */
-    public static boolean compareParameters(Route a, Route b){
+    private static boolean compareParameters(Route a, Route b){
         if (a.toString().equals(b.toString())){
             if (a.hasSpeedSign() == b.hasSpeedSign()){
                 List<Sensor> aSensors = a.getSensors();
@@ -328,7 +330,7 @@ public class Route {
      * @param b second route to compare for equality
      * @return whether routes are equal or not using these suite of tests.
      */
-    public static boolean compareTrafficLights(Route a, Route b){
+    private static boolean compareTrafficLights(Route a, Route b){
         boolean bothHave = a.getTrafficLight() != null
                 && b.getTrafficLight() != null;
         boolean bothDontHave = a.getTrafficLight() == null &&
@@ -350,7 +352,7 @@ public class Route {
      * @param b second route to compare for equality
      * @return whether routes are equal or not using these suite of tests.
      */
-    public static boolean compareSignAndSensors(Route a, Route b){
+    private static boolean compareSignAndSensors(Route a, Route b){
         if (compare(a.getSensors(), b.getSensors())){
             if ((a.hasSpeedSign() && b.hasSpeedSign())){
                 return a.getSpeed() == b.getSpeed();
@@ -361,7 +363,7 @@ public class Route {
     }
 
 
-    public static boolean compare(List<Sensor> a, List<Sensor> b){
+    private static boolean compare(List<Sensor> a, List<Sensor> b){
         List<Sensor> firstList = a;
         List<Sensor> secondList = b;
 

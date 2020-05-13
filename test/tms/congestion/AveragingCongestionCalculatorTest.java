@@ -1,7 +1,6 @@
 package tms.congestion;
 
 import static org.junit.Assert.*;
-import org.junit.Before;
 import org.junit.Test;
 import tms.sensors.DemoPressurePad;
 import tms.sensors.DemoSpeedCamera;
@@ -12,14 +11,30 @@ import tms.util.TimedItemManager;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AverageCongestionCalculatorTest {
-    TimedItemManager t = TimedItemManager.getTimedItemManager();;
-    /*
-    * Test the rounding of numbers from say .3, .5, .7 for various numbers of
-    *  sensors.
-    *
-    * */
+/**
+ * Class used for testing the validity of the implemented
+ * AveragingCongestionCalculator. The following tests are implemented:
+ *
+ *  1) Data values from a single sensors changes every time the
+ *     TimedItemManager's oneSecond() is called.
+ *  2) Data values from multiple sensors change every time the
+ *     TimedItemManager's oneSecond() method is called.
+ *  3) AveragingCongestionCalculator() returns 0 if there are no sensors.
+ *  4) AveragingCongestionCalculator() returns expected value for 1 sensor.
+ *  5) AveragingCongestionCalculator() returns expected value for 3 sensors.
+ *  6) Congestion values ending in .5 get rounded up
+ *  7) Congestion values ending in decimals greater than .5 get rounded up
+ *  8) Congestion values ending in decimals smaller than .5 get rounded down
+ *  9) Negative (non-zero) congestion values get bounded to 0
+ * 10) Positive (non-zero) congestion values get bounded to 100
+ */
+public class AveragingCongestionCalculatorTest {
+    TimedItemManager t = TimedItemManager.getTimedItemManager();
 
+    /**
+     * Test that the data values change as TimedItemManager
+     * .getTimedItemManager.oneSecond() is called.
+     */
     @Test
     public void testCongestion_oneSecondIteration(){
         List<Sensor> sensors = new ArrayList<>();
@@ -93,7 +108,6 @@ public class AverageCongestionCalculatorTest {
         }
     }
 
-
     @Test
     public void testCongestion_noNodesReturnsZero(){
         List<Sensor> sensors = new ArrayList<>();
@@ -118,8 +132,6 @@ public class AverageCongestionCalculatorTest {
         );
 
         assertEquals(75, a.calculateCongestion());
-
-
     }
 
     @Test
@@ -145,6 +157,81 @@ public class AverageCongestionCalculatorTest {
         assertEquals(60, a.calculateCongestion());
 
 
+    }
+
+    @Test
+    public void testCongestion_roundingUp(){
+        List<Sensor> sensors = new ArrayList<>();
+
+        sensors.add(
+                new DemoPressurePad(new int[] {255,2,3,4}, 1000)
+        );
+
+        AveragingCongestionCalculator a = new AveragingCongestionCalculator(
+                sensors
+        );
+
+        assertEquals(26, a.calculateCongestion());
+    }
+
+    @Test
+    public void testCongestion_roundingDown(){
+        List<Sensor> sensors = new ArrayList<>();
+
+        sensors.add(
+                new DemoPressurePad(new int[] {2549,2,3,4}, 10000)
+        );
+
+        AveragingCongestionCalculator a = new AveragingCongestionCalculator(
+                sensors
+        );
+
+        assertEquals(25, a.calculateCongestion());
+    }
+
+    @Test
+    public void testCongestion_roundingUp2(){
+        List<Sensor> sensors = new ArrayList<>();
+
+        sensors.add(
+                new DemoPressurePad(new int[] {260,2,3,4}, 1000)
+        );
+
+        AveragingCongestionCalculator a = new AveragingCongestionCalculator(
+                sensors
+        );
+
+        assertEquals(26, a.calculateCongestion());
+    }
+
+    @Test
+    public void testCongestion_lowerBoundRoundsTo0(){
+        List<Sensor> sensors = new ArrayList<>();
+
+        sensors.add(
+                new DemoPressurePad(new int[] {-260,2,3,4}, 1000)
+        );
+
+        AveragingCongestionCalculator a = new AveragingCongestionCalculator(
+                sensors
+        );
+
+        assertEquals(0, a.calculateCongestion());
+    }
+
+    @Test
+    public void testCongestion_upperBoundRoundsTo100(){
+        List<Sensor> sensors = new ArrayList<>();
+
+        sensors.add(
+                new DemoPressurePad(new int[] {260,2,3,4}, 10)
+        );
+
+        AveragingCongestionCalculator a = new AveragingCongestionCalculator(
+                sensors
+        );
+
+        assertEquals(100, a.calculateCongestion());
     }
 
     private int averageOf(int a, int b){

@@ -52,6 +52,9 @@ public class AveragingCongestionCalculator implements CongestionCalculator{
         }
 
         double result = (double) sum / (double) numberOfSensors;
-        return (int) Math.round(result); // Round to the nearest integer.
+        int congestion = (int) Math.round(result);
+
+        return Math.max(CONGESTION_LOWER_BOUND, Math.min(congestion,
+                CONGESTION_UPPER_BOUND  ));
     }
 }

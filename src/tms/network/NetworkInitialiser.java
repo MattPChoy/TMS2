@@ -12,12 +12,11 @@ import java.io.*;
 import java.util.*;
 
 public class NetworkInitialiser {
-    // Delimiter used to separate individual pieces of data on a single line
+    /** Delimiter used to separate individual pieces of data on a single line */
     public static final String LINE_INFO_SEPARATOR = ":";
-    // Delimiter used to separate individual elements in a variable-length list
-    // on a single line
+    /** Delimiter used to separate individual elements in a variable-length list
+        on a single line */
     public static final String LINE_LIST_SEPARATOR = ",";
-    // TODO: Update the value of the LINE_INFO_SEPARATOR, LINE_LIST_SEPARATOR;
 
 
     public NetworkInitialiser() {
@@ -92,20 +91,22 @@ public class NetworkInitialiser {
         int numberOfRoutes = getRouteCount(file);
         int yellowTime = getYellowTime(file);
 
-        addIntersections(file, network);
-        System.out.println("===== AddRoutes() =====");
-        addRoutes(file, network);
+        network.setYellowTime(yellowTime);
 
-        System.out.println("===== Network.toString() =====");
-        System.out.println(
-                network.toString()
-        );
-        System.out.println("==============================");
+//        addIntersections(file, network);
+//        System.out.println("===== AddRoutes() =====");
+//        addRoutes(file, network);
+//
+//        System.out.println("===== Network.toString() =====");
+//        System.out.println(
+//                network.toString()
+//        );
+//        System.out.println("==============================");
 
         return network;
     }
 
-    public static List<String> read(String filename)
+    private static List<String> read(String filename)
             throws IOException, InvalidNetworkException {
         File file = new File(filename);
         Scanner scanner = new Scanner(file);
@@ -134,7 +135,7 @@ public class NetworkInitialiser {
      * @throws InvalidNetworkException if there are more than 2 blank lines
      * at EOF.
      */
-    public static void checkEOFBlankLines(List<String> file)
+    private static void checkEOFBlankLines(List<String> file)
             throws InvalidNetworkException{
         int numberOfBlankLinesAtEOF = 0;
         boolean current = true;
@@ -163,7 +164,7 @@ public class NetworkInitialiser {
      * @throws InvalidNetworkException if number of routes cannot be parsed
      *      * as an integer.
      */
-    public static int getIntersectionCount(List<String> file)
+    private static int getIntersectionCount(List<String> file)
         throws InvalidNetworkException{
         int numberOfIntersections;
 
@@ -185,7 +186,7 @@ public class NetworkInitialiser {
      * @throws InvalidNetworkException if number of routes cannot be parsed
      * as an integer.
      */
-    public static int getRouteCount(List<String> file)
+    private static int getRouteCount(List<String> file)
             throws InvalidNetworkException{
         int numberOfRoutes;
 
@@ -207,7 +208,7 @@ public class NetworkInitialiser {
      * @throws InvalidNetworkException if yellow time is invalid, or cannot
      * be parsed as an integer.
      */
-    public static int getYellowTime(List<String> file) throws InvalidNetworkException {
+    private static int getYellowTime(List<String> file) throws InvalidNetworkException {
         int yellowTime;
 
         try{
@@ -232,7 +233,7 @@ public class NetworkInitialiser {
      * @throws InvalidNetworkException if id is invalid, or as thrown by any
      * respective method.
      */
-    public static void addIntersections(List<String> file, Network network)
+    private static void addIntersections(List<String> file, Network network)
             throws InvalidNetworkException {
         int numberOfIntersections = getIntersectionCount(file);
         int numberOfLines = file.size() - 1;
@@ -272,7 +273,7 @@ public class NetworkInitialiser {
         }
     }
 
-    public static void addTrafficLights(List<String> trafficLightMetadata,
+    private static void addTrafficLights(List<String> trafficLightMetadata,
                                         Network network)
             throws InvalidNetworkException {
 
@@ -302,7 +303,7 @@ public class NetworkInitialiser {
      * a traffic light on a given route.
      * @param metadata the data containing the string IDs of the intersections.
      */
-    public static List<String> getTrafficLightOrder(String[] metadata){
+    private static List<String> getTrafficLightOrder(String[] metadata){
         return new ArrayList<>(
                 Arrays.asList(
                         metadata[2].split(LINE_LIST_SEPARATOR)
@@ -316,37 +317,52 @@ public class NetworkInitialiser {
      * @param delimiter the delimiter to count the instances of
      * @return number of occurrences of the delimiter in the string.
      */
-    public static int countDelimiterInstances(String string, String delimiter){
+    private static int countDelimiterInstances(String string, String delimiter){
         return (string.length() - string.replace(
                 delimiter, "").length());
     }
 
     /**
-     * A method that wraps the Network.getIntersection() method and recasts
-     * the IntersectionNotFound exception as an InvalidNetworkException. This
-     * should never be called unless there is a logical error in the code
-     * that I have written.
-     * @return Intersection target.
+     * A method that iterates through the list of instantiated intersections
+     * obtained by network.getIntersections().
+     * @return Intersection with given id.
      * @throws InvalidNetworkException when an intersection that should have
-     * been instantiated isn't
+     * been instantiated isn't.
      */
-    public static Intersection getIntersection(Network network, String id)
+    private static Intersection getIntersection(Network network, String id)
             throws InvalidNetworkException {
-        Intersection target;
+        List<Intersection> intersections = network.getIntersections();
+        for (Intersection i : intersections){
+            if (i.getId().equals(id)){
+                return i;
+            }
+        }
+
+        throw new InvalidNetworkException("Intersection with id " + id + " " +
+                "not found");
+    }
+
+    /**
+     * A method that wraps Network.getRoute() method and recasts the
+     * RouteNotFoundException as an InvalidNetworkException. This exception
+     * should never be thrown unless there is a logical error in the code
+     * that I have written
+     *
+     * @return route with originating intersection from and terminating
+     * intersection from
+     */
+    private static Route getRoute(Network network, String from, String to)
+            throws InvalidNetworkException {
+        Route r;
 
         try{
-            target = network.getIntersection(id);
-        } catch (IntersectionNotFoundException e){
-            throw new InvalidNetworkException("Target does not match. " +
-                    "Logical error.");
+            r =  network.getConnection(from, to);
+        } catch (IntersectionNotFoundException | RouteNotFoundException e) {
+            throw new InvalidNetworkException("Logical error. Cannot find " +
+                    "route!");
         }
 
-        if (target == null){
-            throw new InvalidNetworkException("Target is null. Logical error.");
-        }
-
-        return target;
-
+        return r;
     }
 
     /**
@@ -354,7 +370,7 @@ public class NetworkInitialiser {
      * metadata (Line split using LINE_INFO_SEPARATOR as the delimiter)
      * @param metadata the metadata to process
      */
-    public static int getTrafficLightDuration(String[] metadata) throws InvalidNetworkException {
+    private static int getTrafficLightDuration(String[] metadata) throws InvalidNetworkException {
         try{
             return Integer.parseInt(metadata[1]);
         } catch (NumberFormatException e){
@@ -371,7 +387,7 @@ public class NetworkInitialiser {
      * @param file the string representation of the data file to pass
      * @param network the network to which to add the routes.
      */
-    public static void addRoutes(List<String> file,
+    private static void addRoutes(List<String> file,
                                  Network network) throws InvalidNetworkException {
 
         List<Integer> rangeToIterate = getRange(file, SectionName.ROUTES);
@@ -379,7 +395,6 @@ public class NetworkInitialiser {
         int upperBound = rangeToIterate.get(1);
 
         validateRouteCount(file);
-        Route previous = null;
         String from = null, to = null; // Initialise it here so it can be used
         // by the sensors section but not be cleared for every line.
 
@@ -392,27 +407,19 @@ public class NetworkInitialiser {
                 from = splits[0];
                 to = splits[1];
                 int defaultSpeed = Integer.parseInt(splits[2]);
-                try{
-                    network.getIntersection(from);
-                    network.getIntersection(to);
-                } catch (IntersectionNotFoundException e){
-                    throw new InvalidNetworkException("Intersection cannot be" +
-                            " found.");
-                }
+
+                getIntersection(network, from);
+                getIntersection(network, to);
 
                 try{
                     network.connectIntersections(from, to, defaultSpeed);
                 } catch (IntersectionNotFoundException e){
                     throw new InvalidNetworkException("Logic error!");
                 }
-                System.out.println("+ route " + from +
-                        ":" + to + ":" + defaultSpeed);
-                try {
-                    network.getRoute(from, to);
-                } catch (IntersectionNotFoundException
-                        | RouteNotFoundException e){
-                    throw new InvalidNetworkException("Logic error!");
-                }
+//                System.out.println("+ route " + from +
+//                        ":" + to + ":" + defaultSpeed);
+
+                getRoute(network, from, to);
             }
 
             if (isSensorString(line)){
@@ -461,7 +468,7 @@ public class NetworkInitialiser {
                     );
                 }
 
-                System.out.println("+ " + type + ":" + threshold + dataString);
+//                System.out.println("+ " + type + ":" + threshold + dataString);
             }
         }
     }
@@ -473,7 +480,7 @@ public class NetworkInitialiser {
      * @throws InvalidNetworkException if number of declared routes does not
      * match the number of routes defined in the text file.
      */
-    public static void validateRouteCount(List<String> file)
+    private static void validateRouteCount(List<String> file)
             throws InvalidNetworkException{
         int numberOfRoutes = 0;
         for (SectionName sectionName : getLineCategories(file)){
@@ -494,7 +501,7 @@ public class NetworkInitialiser {
      * @return a list containing the "category" enum of each line
      * @ensures lineCategories.size() == file.size();
      */
-    public static List<SectionName> getLineCategories(List<String> file)
+    private static List<SectionName> getLineCategories(List<String> file)
             throws InvalidNetworkException {
         List<SectionName> lineCategories = new ArrayList<>();
 
@@ -523,7 +530,7 @@ public class NetworkInitialiser {
     /**
      * A method to find the bounds of each partition
      */
-    public static List<Integer> getRange(List<String> file,
+    private static List<Integer> getRange(List<String> file,
             SectionName name) throws InvalidNetworkException {
 
         List<SectionName> lineCategories = getLineCategories(file);
@@ -592,7 +599,7 @@ public class NetworkInitialiser {
      * @return true if string could be an intersection, false if there is a
      * semantic error with the string.
      */
-    public static boolean isSensorString(String input){
+    private static boolean isSensorString(String input){
         int delimiterInstances = countDelimiterInstances(input,
                 LINE_INFO_SEPARATOR);
 
@@ -657,7 +664,7 @@ public class NetworkInitialiser {
         return true;
     }
 
-    public static int[] parseDelimitedString(String input, String delimiter) throws InvalidNetworkException {
+    private static int[] parseDelimitedString(String input, String delimiter) throws InvalidNetworkException {
         String[] processedInput = input.split(delimiter);
         int numberOfInputs = processedInput.length;
 
@@ -685,7 +692,7 @@ public class NetworkInitialiser {
      * @return true if string could be an intersection, false if there is a
      * semantic error with the string.
      */
-    public static boolean isRouteString(String input){
+    private static boolean isRouteString(String input){
         int delimiterInstances = countDelimiterInstances(input,
                 LINE_INFO_SEPARATOR);
 
@@ -760,7 +767,7 @@ public class NetworkInitialiser {
      * @return true if string could be an intersection, false if there is a
      * semantic error with the string.
      */
-    public static boolean isIntersectionString(String input){
+    private static boolean isIntersectionString(String input){
         int delimiterInstances = countDelimiterInstances(input,
                 LINE_INFO_SEPARATOR);
 
@@ -799,14 +806,14 @@ public class NetworkInitialiser {
         return false; // If the number of delimiter instances does not match;
     }
 
-    public static boolean isValidIntersectionID(String ID){
+    private static boolean isValidIntersectionID(String ID){
         return !ID.equals("PP") &&
                 !ID.equals("SC") &&
                 !ID.equals("VC") &&
                 ID.length() != 0; // TODO @1232
     }
 
-    public static boolean isInteger(String input){
+    private static boolean isInteger(String input){
         try{
             Integer.parseInt(input);
         } catch (NumberFormatException e){
