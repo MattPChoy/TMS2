@@ -30,7 +30,10 @@ public class ToStringTest {
     private final String DEMO_TXT = NETWORKS_LOCATION + "demo.txt";
 
     @Test
-    public void testToStringSTDOUT() throws IntersectionNotFoundException, DuplicateSensorException, RouteNotFoundException, InvalidOrderException {
+    public void testToStringSTDOUT() throws IntersectionNotFoundException,
+            DuplicateSensorException, RouteNotFoundException,
+            InvalidOrderException {
+
         Network n = new Network();
 
         n.setYellowTime(1);

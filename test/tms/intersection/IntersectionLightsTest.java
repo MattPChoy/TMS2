@@ -20,7 +20,8 @@ import static org.junit.Assert.*;
  *
  *  1)Test that the constructor:
  *      i) Sets the first trafficLight's signal to TrafficSignal.GREEN
- *     ii) Sets the rest of the trafficLights' signal to TrafficSignal.REDa
+ *     ii) Sets the rest of the trafficLights' signal to TrafficSignal.RED
+ *
  *  2) Test that the getYellowTime() method returns the correct value for
  *     yellow time.
  *  3) Test that the setDuration() method correctly sets the duration
@@ -30,8 +31,6 @@ import static org.junit.Assert.*;
  *  6) Test that the traffic light of a route gets added to the cycle when
  *     the route is created after the instantiation of the traffic light.
  *  7) A method to return the length of an integer in characters;
- *  8) A method used for the oneSecond test method. Used to assert that a
- *     given light has a certain signal and the other lights are red.
  */
 public class IntersectionLightsTest {
     IntersectionLights lights;
@@ -62,7 +61,7 @@ public class IntersectionLightsTest {
     /**
      * Test that the constructor:
      *   i) Sets the first trafficLight's signal to TrafficSignal.GREEN
-     *  ii) Sets the rest of the trafficLights' signal to TrafficSignal.REDa
+     *  ii) Sets the rest of the trafficLights' signal to TrafficSignal.RED
      */
     @Test
     public void testConstructor(){
@@ -170,25 +169,25 @@ public class IntersectionLightsTest {
 
         for (int time = 0; time < 120; time++) {
             lights.oneSecond();
-            if (0 <= time && time <= 7) {
+            if (time <= 7) {
                 // We should expect GRRR
                 assertLights(0, TrafficSignal.GREEN);
-            } else if (8 <= time && time <= 14) {
+            } else if (time <= 14) {
                 // We should expect YRRR
                 assertLights(0, TrafficSignal.YELLOW);
-            } else if (15 <= time && time <= 22) {
+            } else if (time <= 22) {
                 // We should expect RGRR
                 assertLights(1, TrafficSignal.GREEN);
-            } else if (23 <= time && time <= 29) {
+            } else if (time <= 29) {
                 // We should expect RYRR
                 assertLights(1, TrafficSignal.YELLOW);
-            } else if (30 <= time && time <= 37) {
+            } else if (time <= 37) {
                 // We should expect RRGR
                 assertLights(2, TrafficSignal.GREEN);
-            } else if (38 <= time && time <= 44) {
+            } else if (time <= 44) {
                 // We should expect RRYR
                 assertLights(2, TrafficSignal.YELLOW);
-            } else if (45 <= time && time < 52) {
+            } else if (time < 52) {
                 // We should expect RRRG
                 assertLights(3, TrafficSignal.GREEN);
             } else if (53 <= time && time < 59) {
@@ -204,7 +203,8 @@ public class IntersectionLightsTest {
      * @throws InvalidOrderException never
      */
     @Test
-    public void testAddingIntersectionAfterTrafficLightInstantiated() throws RouteNotFoundException, InvalidOrderException {
+    public void testAddingIntersectionAfterTrafficLightInstantiated()
+            throws RouteNotFoundException, InvalidOrderException {
         Intersection A = new Intersection("A");
         Intersection B = new Intersection("B");
         Intersection C = new Intersection("C");

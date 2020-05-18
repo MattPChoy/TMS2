@@ -21,8 +21,9 @@ public class IntersectionLights implements TimedItem {
     private int time = 0;
     // The index of the route in connections which currently has a green or
     // yellow signal.
+    /** The index of rhe route in the connections which currently has a green
+     *  or yellow signal.*/
     private int activeIndex;
-    private int cycleTime;
 
     /**
      * Creates a new set of traffic lights at an intersection.
@@ -39,7 +40,6 @@ public class IntersectionLights implements TimedItem {
         this.yellowTime = yellowTime;
         this.duration = duration;
         this.connections  = connections;
-        this.cycleTime = connections.size() * duration;
 
         // Now that we have ensured that all routes have traffic lights, then
         // we can safely set the traffic signal of the first element to
@@ -146,7 +146,8 @@ public class IntersectionLights implements TimedItem {
     @Override
     public String toString(){
         return duration + ":" + parseList(
-                getIncomingIntersections(connections));
+                getIncomingIntersections(connections)
+        );
     }
 
     /***

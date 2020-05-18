@@ -70,7 +70,7 @@ public class Network {
         }
 
         if (isWhitespace(id)) {
-            throw new IllegalArgumentException("ID contains whitespace");
+            throw new IllegalArgumentException("ID is whitespace");
         }
 
         for (Intersection i : intersections){
@@ -115,7 +115,8 @@ public class Network {
         for (Intersection i : intersections){
             if (i.getId().equals(from)){
                 intersectionFrom = i;
-            }  else if (i.getId().equals(to)){
+            }
+            if (i.getId().equals(to)){
                 intersectionTo = i;
             }
         }
@@ -507,32 +508,6 @@ public class Network {
      */
     public List<Intersection> getIntersections(){
         return this.intersections;
-    }
-
-    /**
-     * A method to return all the intersection objects stored in the
-     * intersections object sorted by their respective IDs alphabetically.
-     * @return a list of intersections sorted alphabetically by ID
-     */
-    private List<Intersection> sortIntersections(){
-        List<String> intersectionNames = new ArrayList<>();
-        List<Intersection> sorted = new ArrayList<>();
-
-        for (Intersection i : intersections){
-            intersectionNames.add(i.getId());
-        }
-
-        Collections.sort(intersectionNames);
-
-        for (String intersectionID : intersectionNames){
-            for (Intersection i : intersections){
-                if (intersectionID.equals(i.getId())){
-                    sorted.add(i);
-                }
-            }
-        }
-
-        return sorted;
     }
 
     /**

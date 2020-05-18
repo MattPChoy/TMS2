@@ -1,6 +1,5 @@
 package tms.display;
 
-import javafx.application.Platform;
 import javafx.beans.property.*;
 import tms.intersection.Intersection;
 import tms.network.Network;
@@ -9,6 +8,7 @@ import tms.sensors.*;
 import tms.util.*;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
@@ -46,6 +46,8 @@ public class MainViewModel {
     private BooleanProperty noSelected = new SimpleBooleanProperty(true);
 
     private StringProperty error = new SimpleStringProperty("");
+    /** A boolean variable to indicate whether the simulation is paused. */
+    private boolean paused = false;
 
     /**
      * Creates a model of the network to be used in the GUI.
@@ -89,7 +91,21 @@ public class MainViewModel {
      * @ass2 View-Model code for A2.
      */
     public void save(String filename) {
-        // TODO: Implement logic to save network data to a file.
+        try{
+            BufferedWriter out = new BufferedWriter(
+                    new FileWriter(
+                            new File(filename)
+                    )
+            );
+
+            out.write(
+                    network.toString()
+            );
+            out.close();
+            System.out.println("Saved file " +  filename);
+        } catch (IOException e){
+            error.setValue("Error accessing file.");
+        }
     }
 
     /**
@@ -114,7 +130,17 @@ public class MainViewModel {
      * @ass2 View-Model code for A2.
      */
     public void togglePaused() {
-        // TODO: Implement logic to toggle whether simulation is paused or not.
+        if (pausedProperty.getValue()){
+            // Is currently paused, so unpause the system
+            pausedProperty.set(false);
+            pausedButtonText.set("Unpause");
+            pausedText.set("System paused: false");
+        } else {
+            // Is not currently paused so pause the system
+            pausedProperty.set(true);
+            pausedButtonText.set("Pause");
+            pausedText.set("System paused: true");
+        }
     }
 
     /**
@@ -131,7 +157,14 @@ public class MainViewModel {
      * @ass2 View-Model code for A2.
      */
     public void tick() {
-        // TODO: Implement logic to process that one second has passed in the simulation.
+        if (!pausedProperty.getValue()){
+            TimedItemManager.getTimedItemManager().oneSecond();
+            seconds.set(
+                    seconds.getValue() + 1
+            );
+            timeElapsed.set("Seconds Elapsed: " + seconds.getValue().toString());
+        }
+
     }
 
     /**
@@ -148,7 +181,17 @@ public class MainViewModel {
      * @ass2 View-Model code for A2.
      */
     void accept(String input) {
-        // TODO: Implement logic for the input keys.
+        switch (input.toLowerCase()){
+            case "p":
+                togglePaused();
+                break;
+            case "q":
+                System.exit(1);
+                break;
+            case "s":
+                save("DefaultSave.txt");
+                break;
+        }
     }
 
     /**

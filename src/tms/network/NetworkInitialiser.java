@@ -1,11 +1,6 @@
 package tms.network;
 
-import tms.intersection.Intersection;
-import tms.route.Route;
-import tms.sensors.DemoPressurePad;
-import tms.sensors.DemoSpeedCamera;
-import tms.sensors.DemoVehicleCount;
-import tms.sensors.Sensor;
+import tms.sensors.*;
 import tms.util.*;
 
 import java.io.*;
@@ -25,801 +20,697 @@ public class NetworkInitialiser {
 
     /**
      * Loads a saved Network from the file with the given filename.
-     * <p>
      * Network files have the following structure. Square brackets indicate that
      * the data inside them is optional. For example, a route does not
      * necessarily need a speed sign (speedSignSpeed).
-     * <p>
+     *
      * See the demo network for an example (demo.txt).
-     * <p>
+     *
      * ; This is a comment. It should be ignored.
      * numIntersections
      * numRoutes
      * yellowTime
      * intersectionId[:duration:sequence,of,intersection,ids]
      * ... (more intersections)
-     * intersectionFromId:intersectionToId:defaultSpeed:numSensors[:speedSignSpeed]
+     * intersectionFromId:intersectionToId:defaultSpeed:numSensors [:speedSignSpeed]
      * SENSORTYPE:threshold:list,of,data,values
      * ... (more routes and sensors)
-     * <p>
+     *
      * A network file is invalid if any of the following conditions are true:
-     * <p>
+     *
      * The number of intersections specified is not equal to the number of
      * intersections read from the file.
-     * The number of routes specified does not match the number read from
-     * the file.
+     * The number of routes specified does not match the number read from the
+     * file.
      * The number of sensors specified for a route does not match the number
      * read from the line below.
-     * An intersection referenced by another intersection does not exist,
-     * or no route exists between them.
+     * An intersection referenced by a route does not exist.
+     * An intersection has an invalid ID according to
+     * Network.createIntersection(String).
      * Two or more intersections have the same identifier string.
-     * Two or more routes have the same starting and ending intersections.
+     * Two or more routes have the same starting and ending intersections,
+     * e.g. a route X→Y and another route X→Y. A route is allowed to end at its
+     * starting intersection, i.e. X→X is allowed.
      * A sensor type that is not one of the three provided demo sensors.
      * A route contains sensors of the same type.
      * The traffic light yellow time is less than one (1).
-     * A traffic light duration is less than the traffic light yellow time
-     * plus one (1).
-     * Any numeric value that should be positive is less than zero. This
+     * A traffic light duration is less than the traffic light yellow time plus
+     * one (1).
+     * For intersections with traffic lights:
+     * The traffic light order for an intersection is not a permutation of that
+     * intersection's incoming routes.
+     * The traffic light order for an intersection is empty.
+     * Any numeric value that should be non-negative is less than zero. This
      * includes:
      * route speeds
      * speed sign speeds
      * sensor thresholds (also, cannot be zero)
      * sensor data values
-     * The colon-delimited format is violated, i.e. there are more/fewer
-     * colons than expected.
+     * The colon-delimited format is violated, i.e. there are more/fewer colons
+     * than expected.
      * Any numeric value fails to be parsed.
-     * The file contains any more than two (2) newline characters at the
-     * end of the file.
-     *
-     * @param fileName name of the file from which to load the network
-     * @return the Network loaded from the file
-     * @throws IOException             any IOExceptions encountered when reading the file
-     *                                 are bubbled up
-     * @throws InvalidNetworkException if the file format of the given file
-     *                                 is invalid.
+     * An empty line occurs where a non-empty line is expected.
+     * The file contains any more than two (2) newline characters at the end of
+     * the file.
+     * @param filename name of the file from which to load the network
+     * @return the Network loaded from the file,
+     * @throws IOException any IOExceptions encountered when reading the file
+     * are bubbled up.
+     * @throws InvalidNetworkException if the gile format of the given file
+     * is invalid.
      */
-    public static Network loadNetwork(String fileName) throws IOException,
+    public static Network loadNetwork(String filename) throws IOException,
             InvalidNetworkException {
+        Network n = new Network();
 
-        Network network = new Network();
-        List<String> file = read(fileName); // Parse the file as a string
-        // list so that we can manipulate it. Each element of the variable
-        // represents a new line in the text file.
+        // Parse the network as a file.
+        List<String> file = read(filename);
 
-        // Populate the constants
-        int numberOfIntersections = getIntersectionCount(file);
-        int numberOfRoutes = getRouteCount(file);
-        int yellowTime = getYellowTime(file);
+        // Make sure that the first 3 lines are valid constant values;
+        // Number of intersections must be non-negative
+        // Number of routes must be non-negative
+        // YellowTime must be positive (non-negative and non-zero)
+        validateConstants(file);
+        n.setYellowTime(getYellowTime(file));
 
-        network.setYellowTime(yellowTime);
+        // Create intersections, then routes, sensors and traffic lights
+        addIntersections(file, n);
+        addRoutes(file, n);
+        addSensors(file, n);
 
-//        addIntersections(file, network);
-//        System.out.println("===== AddRoutes() =====");
-//        addRoutes(file, network);
-//
-//        System.out.println("===== Network.toString() =====");
-//        System.out.println(
-//                network.toString()
-//        );
-//        System.out.println("==============================");
+        addLights(file, n);
+        addSpeedSign(file, n);
 
-        return network;
+        checkNumRoutes(file, n);
+        checkNumIntersections(file, n);
+        checkNumSensors(file, n);
+        return n;
     }
 
-    private static List<String> read(String filename)
-            throws IOException, InvalidNetworkException {
-        File file = new File(filename);
-        Scanner scanner = new Scanner(file);
-
-        List<String> output = new ArrayList<>(); // The list representation of the
-        // text file with comments removed.
-
-        while (scanner.hasNextLine()){
-            String line = scanner.nextLine();
-
-            if (line.length() == 0){
-                output.add(line);
-            } else if (line.charAt(0) != ';'){
-                output.add(line);
-            }
-        }
-
-        checkEOFBlankLines(output);
-
-        return output;
-    }
-
-    /**
-     * A method to check that there are less than 2 blank lines at EOF.
-     * @param file list representation of file
-     * @throws InvalidNetworkException if there are more than 2 blank lines
-     * at EOF.
-     */
-    private static void checkEOFBlankLines(List<String> file)
-            throws InvalidNetworkException{
-        int numberOfBlankLinesAtEOF = 0;
-        boolean current = true;
-
-        for (int i = file.size() - 1; i > 0; i--){
-            if (file.get(i).length() == 0 && current){
-                numberOfBlankLinesAtEOF++;
-            } else {
-                current = false;
-            }
-        }
-
-        if (numberOfBlankLinesAtEOF > 1){
-            throw new InvalidNetworkException(
-                    "Too many blank lines at the end of the file: "
-                            + numberOfBlankLinesAtEOF + " blank lines."
-            );
-        }
-    }
-
-    /**
-     * A method to parse the file list and return the number of intersections
-     * specified in the file. (Line 0)
-     * @param file the String list representation of the file
-     * @return number of intersections (int)
-     * @throws InvalidNetworkException if number of routes cannot be parsed
-     *      * as an integer.
-     */
-    private static int getIntersectionCount(List<String> file)
-        throws InvalidNetworkException{
-        int numberOfIntersections;
-
-        try{
-            numberOfIntersections = Integer.parseInt(file.get(0));
-        } catch (NumberFormatException e){
-            throw new InvalidNetworkException("Cannot parse line 0 as an " +
-                    "integer.");
-        }
-
-        return numberOfIntersections;
-    }
-
-    /**
-     * A method to parse the file list and return the number of routes
-     * specified in the file. (Line 1)
-     * @param file the String list representation of the file
-     * @return number of routes (int)
-     * @throws InvalidNetworkException if number of routes cannot be parsed
-     * as an integer.
-     */
-    private static int getRouteCount(List<String> file)
-            throws InvalidNetworkException{
-        int numberOfRoutes;
-
-        try{
-            numberOfRoutes = Integer.parseInt(file.get(1));
-        } catch (NumberFormatException e){
-            throw new InvalidNetworkException("Cannot parse line 1 as an " +
-                    "integer.");
-        }
-
-        return numberOfRoutes;
-    }
-
-    /**
-     * A method to parse the file list and return the network's specified
-     * yellow time (Line 3)
-     * @param file the String list representation of the file.
-     * @return yellowTime of route (in seconds, as an integer)
-     * @throws InvalidNetworkException if yellow time is invalid, or cannot
-     * be parsed as an integer.
-     */
-    private static int getYellowTime(List<String> file) throws InvalidNetworkException {
-        int yellowTime;
-
-        try{
-            yellowTime = Integer.parseInt(file.get(2));
-        } catch (NumberFormatException e){
-            throw new InvalidNetworkException("Cannot parse line 1 as an " +
-                    "integer.");
-        }
-
-        if (yellowTime < 1){
-            throw new InvalidNetworkException("Invalid yellow time");
-        }
-
-        return yellowTime;
-    }
-
-    /**
-     * A method to parse the file list and return the details of the
-     * required intersection objects.
-     * @param file the string representation of the data file
-     * @param network the network object for which to add the intersections
-     * @throws InvalidNetworkException if id is invalid, or as thrown by any
-     * respective method.
-     */
-    private static void addIntersections(List<String> file, Network network)
+    private static void validateConstants(List<String> file)
             throws InvalidNetworkException {
-        int numberOfIntersections = getIntersectionCount(file);
-        int numberOfLines = file.size() - 1;
-        boolean current = true;
-        List<String> trafficLightMetadata = new ArrayList<>();
-
-        for (int lineNumber = 3; lineNumber < numberOfLines; lineNumber++){
-            String line = file.get(lineNumber);
-            int numberOfColons = countDelimiterInstances(line,
-                    LINE_INFO_SEPARATOR);
-            if (numberOfColons == 0){
-                // Network by itself.
-                System.out.println("+ intersection " + line);
-                network.createIntersection(line);
-
-            }
-            else if (numberOfColons == 2 && current){
-                String intersectionID = line.split(LINE_INFO_SEPARATOR)[0];
-                if (isValidIntersectionID(intersectionID)){
-                    // Not a sensor
-                    System.out.println("+ intersection " + intersectionID);
-                    network.createIntersection(intersectionID);
-                    trafficLightMetadata.add(line);
-                } else throw new InvalidNetworkException(
-                        "The intersection ID provided, '" + intersectionID +
-                                "' is invalid."
+        for (int lineNumber = 1; lineNumber < 4; lineNumber++){
+            String line = file.get(lineNumber-1);
+            if (!isInteger(line)){
+                throw new InvalidNetworkException(
+                        "Argument cannot be converted to an integer (" + line
+                                + ")"
                 );
-                // TODO confirm that intersectionID!= SC, VC, PP
-
-            } else current = false; // Intersections must be grouped together.
-        }
-
-        // Now test that the number of intersections match
-        if (numberOfIntersections != network.getIntersections().size()){
-            throw new InvalidNetworkException("Number of intersections " +
-                    "declared does not match text file.");
-        }
-    }
-
-    private static void addTrafficLights(List<String> trafficLightMetadata,
-                                        Network network)
-            throws InvalidNetworkException {
-
-
-        // Now create the traffic lights
-        for (String data : trafficLightMetadata){
-            String[] metadata = data.split(LINE_INFO_SEPARATOR);
-            String intersectionID = metadata[0];
-            int duration = getTrafficLightDuration(metadata);
-            Intersection target = getIntersection(network, intersectionID);
-            List<String> order = getTrafficLightOrder(metadata);
-
-            try{
-                network.addLights(intersectionID, duration, order);
-            } catch (InvalidOrderException e){
-                throw new InvalidNetworkException("Invalid order parameter " +
-                        order.toString() + " [" + e.getMessage() + "].");
-            } catch (IntersectionNotFoundException e){
-                throw new InvalidNetworkException("Could not find " +
-                        "intersection" + intersectionID);
+            }
+            int value = Integer.parseInt(line);
+            if (value < 0){
+                // Number of intersections, routes and yellowTime can't be
+                // negative
+                throw new InvalidNetworkException(
+                        "Invalid negative value (" + value + ")"
+                );
+            }
+            if (lineNumber == 3 && value == 0){
+                // Yellow time cannot be 0
+                throw new InvalidNetworkException(
+                        "Invalid value - yellowTime cannot be 0 (" + value + ")"
+                );
             }
         }
     }
 
-    /**
-     * A method which returns a list of intersections used for instantiating
-     * a traffic light on a given route.
-     * @param metadata the data containing the string IDs of the intersections.
-     */
-    private static List<String> getTrafficLightOrder(String[] metadata){
-        return new ArrayList<>(
-                Arrays.asList(
-                        metadata[2].split(LINE_LIST_SEPARATOR)
-                )
-        );
-    }
-
-    /**
-     * A method that counts the instances of any delimiter character.
-     * @param string the string for which to compare
-     * @param delimiter the delimiter to count the instances of
-     * @return number of occurrences of the delimiter in the string.
-     */
-    private static int countDelimiterInstances(String string, String delimiter){
-        return (string.length() - string.replace(
-                delimiter, "").length());
-    }
-
-    /**
-     * A method that iterates through the list of instantiated intersections
-     * obtained by network.getIntersections().
-     * @return Intersection with given id.
-     * @throws InvalidNetworkException when an intersection that should have
-     * been instantiated isn't.
-     */
-    private static Intersection getIntersection(Network network, String id)
+    private static void addIntersections(List<String> file, Network n)
             throws InvalidNetworkException {
-        List<Intersection> intersections = network.getIntersections();
-        for (Intersection i : intersections){
-            if (i.getId().equals(id)){
-                return i;
-            }
-        }
-
-        throw new InvalidNetworkException("Intersection with id " + id + " " +
-                "not found");
-    }
-
-    /**
-     * A method that wraps Network.getRoute() method and recasts the
-     * RouteNotFoundException as an InvalidNetworkException. This exception
-     * should never be thrown unless there is a logical error in the code
-     * that I have written
-     *
-     * @return route with originating intersection from and terminating
-     * intersection from
-     */
-    private static Route getRoute(Network network, String from, String to)
-            throws InvalidNetworkException {
-        Route r;
-
-        try{
-            r =  network.getConnection(from, to);
-        } catch (IntersectionNotFoundException | RouteNotFoundException e) {
-            throw new InvalidNetworkException("Logical error. Cannot find " +
-                    "route!");
-        }
-
-        return r;
-    }
-
-    /**
-     * A method to get the duration of the traffic light from traffic light
-     * metadata (Line split using LINE_INFO_SEPARATOR as the delimiter)
-     * @param metadata the metadata to process
-     */
-    private static int getTrafficLightDuration(String[] metadata) throws InvalidNetworkException {
-        try{
-            return Integer.parseInt(metadata[1]);
-        } catch (NumberFormatException e){
-            throw new InvalidNetworkException(
-              "Intersection " + metadata[0] + " has invalid duration " + metadata[1]
-            );
-        }
-    }
-
-    /**
-     * A method to parse the text file and add routes to the network. Note
-     * that this method also adds sensors to the route.
-     *
-     * @param file the string representation of the data file to pass
-     * @param network the network to which to add the routes.
-     */
-    private static void addRoutes(List<String> file,
-                                 Network network) throws InvalidNetworkException {
-
-        List<Integer> rangeToIterate = getRange(file, SectionName.ROUTES);
-        int lowerBound = rangeToIterate.get(0);
-        int upperBound = rangeToIterate.get(1);
-
-        validateRouteCount(file);
-        String from = null, to = null; // Initialise it here so it can be used
-        // by the sensors section but not be cleared for every line.
-
-        for (int i = lowerBound; i < upperBound; i++){
+        // We can loop through the file until we get to a line which is not a
+        // valid intersection string. This will lead to one of two cases:
+        // 1) The line is an invalid string -> throw InvalidNetworkException
+        // 2) The line is a route string -> Move on to the next one.
+        // Let both cases be handled by the addRoute() method.
+        for (int i = 3; i < file.size(); i++){
             String line = file.get(i);
-            String[] splits = line.split(LINE_INFO_SEPARATOR);
-
-
-            if (isRouteString(line)){
-                from = splits[0];
-                to = splits[1];
-                int defaultSpeed = Integer.parseInt(splits[2]);
-
-                getIntersection(network, from);
-                getIntersection(network, to);
-
+            if (validIntersectionDefinition(line)){
+                String intersectionID = line.split(LINE_INFO_SEPARATOR)[0];
+                boolean intersectionExists = true;
                 try{
-                    network.connectIntersections(from, to, defaultSpeed);
+                    n.findIntersection(intersectionID);
                 } catch (IntersectionNotFoundException e){
-                    throw new InvalidNetworkException("Logic error!");
+                    intersectionExists = false;
                 }
-//                System.out.println("+ route " + from +
-//                        ":" + to + ":" + defaultSpeed);
 
-                getRoute(network, from, to);
-            }
-
-            if (isSensorString(line)){
-                String type = splits[0];
-                int threshold = Integer.parseInt(splits[1]);
-                String dataString = splits[2];
-                int[] data = parseDelimitedString(dataString,
-                        LINE_LIST_SEPARATOR);
-                Sensor sensor;
+                if (!intersectionExists){
+                    n.createIntersection(intersectionID);
+                } else throw new InvalidNetworkException("Duplicate " +
+                        "Intersection ID");
 
 
-                switch (type) {
-                    case "PP":
-                        sensor = new DemoPressurePad(
-                                data, threshold
+                System.out.println("+ intersection " + intersectionID);
+            } else return;
+            // Don't throw as we might have a (valid) route
+            // definition. Just exit the function and let the addRoutes()
+            // method handle it.
+        }
+    }
+
+    /**
+     * A helper method which parses the file and adds Routes (and
+     * speed signs) appropriately.
+     *
+     * NOTE: Assuming that the first line of the file is line 1, the line
+     * number on which the first route is (for a valid network) will be given
+     * by (4 + i) where i is the number of intersections.
+     * @param file object to parse
+     * @param n    network to add to / to use for comparison
+     * @throws InvalidNetworkException
+     */
+    private static void addRoutes(List<String> file, Network n) throws InvalidNetworkException {
+        int numberOfIntersections = n.getIntersections().size();
+        int start = 4 + numberOfIntersections;
+        String from, to;
+
+        for (int lineNumber = start; lineNumber <= file.size(); lineNumber++){
+            String line = file.get(lineNumber - 1);
+            boolean validRoute = validRouteDefinition(line);
+            boolean validSensor = validSensorDefinition(line);
+            boolean valid = validRoute || validSensor;
+
+            if (valid){
+                String[] components = line.split(LINE_INFO_SEPARATOR);
+                if (validRoute){
+                    from = components[0];
+                    to  = components[1];
+                    int defaultSpeed = Integer.parseInt(components[2]);
+
+                    // Check to see whether intersections with id 'to' and
+                    // 'from' exist.
+                    try{
+                        n.findIntersection(to);
+                        n.findIntersection(from);
+                    } catch (IntersectionNotFoundException e){
+                        throw new InvalidNetworkException(
+                                "Route is invalid as intersection(s) '" +
+                                        to + "', '" + from + "' have not been " +
+                                        "instantiated."
                         );
+                    }
+
+                    boolean routeExists = true;
+
+                    try{
+                        n.getConnection(from, to);
+                    } catch (RouteNotFoundException e){
+                        routeExists = false;
+                    } catch (IntersectionNotFoundException e){
+                        throw new InvalidNetworkException("Logic error");
+                    }
+
+                    if (routeExists){
+                        throw new InvalidNetworkException(
+                                "Route already exists from " + from + " to "
+                                        + to
+                        );
+                    }
+
+                    try{
+                        System.out.println("+ Route from " + from + " to " + to);
+                        n.connectIntersections(from, to, defaultSpeed);
+                    } catch (IntersectionNotFoundException e){
+                        throw new InvalidNetworkException("Logic error "
+                            + e.getMessage() + " (" + from + ", " + to + ")");
+                    }
+                }
+            }
+        }
+    }
+
+    private static void addSensors(List<String> file, Network n)
+            throws InvalidNetworkException {
+        String from = null, to = null;
+
+        for (String line : file){
+            String[] components = line.split(LINE_INFO_SEPARATOR);
+
+            if (validRouteDefinition(line)){
+                from = components[0];
+                to = components[1];
+            } else if (validSensorDefinition(line)){
+                String type = components[0];
+                int threshold = Integer.parseInt(components[1]);
+                int[] data = parseSensorData(components[2]);
+
+                Sensor sensorToAdd;
+
+                switch (type){
+                    case "PP":
+                        sensorToAdd = new DemoPressurePad(data, threshold);
                         break;
                     case "SC":
-                        sensor = new DemoSpeedCamera(
-                                data, threshold
-                        );
+                        sensorToAdd = new DemoSpeedCamera(data, threshold);
                         break;
                     case "VC":
-                        sensor = new DemoVehicleCount(
-                                data, threshold
-                        );
+                        sensorToAdd = new DemoVehicleCount(data, threshold);
                         break;
                     default:
-                        throw new InvalidNetworkException("Logic error!");
+                        throw new InvalidNetworkException("Invalid sensor " +
+                                "type");
                 }
 
-                try {
-                    network.addSensor(from, to, sensor);
-                } catch (DuplicateSensorException e) {
-                    throw new InvalidNetworkException(
-                            "Sensor " + type + " already exists");
-                } catch (IntersectionNotFoundException e) {
-                    throw new InvalidNetworkException(
-                            "Either " + from + " or " + to + " " +
-                                    "(intersections) could not be found"
-                    );
-                } catch (RouteNotFoundException e) {
-                    throw new InvalidNetworkException(
-                        "Route " + from + ":" + to + "(intersections)" +
-                                    "could not be found"
-                    );
+                boolean duplicateSensor = false;
+
+                try{
+                    List<Sensor> existingSensors =
+                            n.getConnection(from, to).getSensors();
+
+                    for (Sensor s : existingSensors){
+                        String existingType =
+                                s.toString().split(LINE_INFO_SEPARATOR)[0];
+
+                        if (existingType.equals(type)){
+                            // Same type as existing sensor
+                            duplicateSensor = true;
+                        }
+                    }
+                } catch (IntersectionNotFoundException | RouteNotFoundException e){
+                    throw new InvalidNetworkException();
                 }
 
-//                System.out.println("+ " + type + ":" + threshold + dataString);
+                if (duplicateSensor){
+                    throw new InvalidNetworkException("Duplicate " +
+                            "sensor (Caught before added)");
+                }
+
+                try{
+                    n.addSensor(from, to, sensorToAdd);
+                    System.out.println("+ sensor            [" + from + "] ->" +
+                            " [" + to + "] " + sensorToAdd.toString());
+                } catch (IntersectionNotFoundException | RouteNotFoundException e){
+                    throw new InvalidNetworkException();
+                } catch (DuplicateSensorException e){
+                    throw new InvalidNetworkException("Duplicate sensor");
+                }
             }
         }
     }
 
     /**
-     * A method to validate that the number of declared routes matches the
-     * number of routes defined in the text file.
-     * @param file the string representation of the text file.
-     * @throws InvalidNetworkException if number of declared routes does not
-     * match the number of routes defined in the text file.
+     * Intersections with traffic lights should be in the format:
+     * $id$ : $duration$ : $delimited$ , $order$ , $of$, $ids$
+     * @param file data to iterate through
+     * @param n network object
      */
-    private static void validateRouteCount(List<String> file)
-            throws InvalidNetworkException{
-        int numberOfRoutes = 0;
-        for (SectionName sectionName : getLineCategories(file)){
-            if (sectionName == SectionName.ROUTES){
-                numberOfRoutes++;
-            }
-        }
-
-        if (numberOfRoutes != getRouteCount(file)){
-            throw new InvalidNetworkException("Number of routes does not " +
-                    "match : " + numberOfRoutes + " | " + getRouteCount(file));
-        }
-    }
-
-    /**
-     * A method which iterates through the datafile
-     * @param file the string representation of the textfile.
-     * @return a list containing the "category" enum of each line
-     * @ensures lineCategories.size() == file.size();
-     */
-    private static List<SectionName> getLineCategories(List<String> file)
+    private static void addLights(List<String> file, Network n)
             throws InvalidNetworkException {
-        List<SectionName> lineCategories = new ArrayList<>();
+        for (int i = 3; i < file.size(); i++){
+            String line = file.get(i);
+            if (validIntersectionDefinition(line)){
+                String[] components = line.split(LINE_INFO_SEPARATOR);
+                if (components.length == 3){
+                    // Is a traffic light, we have already validated the
+                    // string by running it through validIntersectionDefinition.
 
-        int numberOfLinesInFile = file.size() - 1;
+                    List<String> order = parseLightOrder(components[2], n);
+                    String id = components[0];
+                    int duration = Integer.parseInt(components[1]);
 
-        for (int lineNum = 0; lineNum <= numberOfLinesInFile; lineNum++){
-            String line = file.get(lineNum);
+                    if (duration < getYellowTime(file) + 1){
+                        throw new InvalidNetworkException(
+                                "Invalid duration value (" + duration + ")."
+                        );
+                    }
 
-            if (isInteger(line)){
-                lineCategories.add(SectionName.CONSTANTS);
-            } else if (isIntersectionString(line)){
-                lineCategories.add(SectionName.INTERSECTIONS);
-            } else if (isRouteString(line)){
-                lineCategories.add(SectionName.ROUTES);
-            } else if (isSensorString(line)){
-                lineCategories.add(SectionName.SENSORS);
-            } else{
-                throw new InvalidNetworkException("Line does not match any " +
-                        "known format");
-            }
-        }
-
-        return lineCategories;
-    }
-
-    /**
-     * A method to find the bounds of each partition
-     */
-    private static List<Integer> getRange(List<String> file,
-            SectionName name) throws InvalidNetworkException {
-
-        List<SectionName> lineCategories = getLineCategories(file);
-
-        int numberOfLinesInFile = file.size() - 1;
-
-        List<Integer> range = new ArrayList<>();
-        range.add(-1); // Start
-        range.add(-1); // End
-        boolean current = true;
-
-        switch (name){
-            case CONSTANTS:
-//                System.out.println("Finding constants range");
-                range.set(0,0);
-                range.set(1,2);
-                break;
-            case INTERSECTIONS:
-//                System.out.println("Finding intersections range");
-                range.set(0,3); // Lower bound
-                for (int i = 3; i < numberOfLinesInFile; i++){
-                    SectionName sectionName = lineCategories.get(i);
-                    if (sectionName != SectionName.INTERSECTIONS){
-                        range.set(1, i-1); // Set to the previous
-                        break;
+                    try{
+                        n.addLights(id, duration, order);
+                        System.out.println("+ TrafficLight [" + id + ", "
+                                + duration + ", " + order + "].");
+                    } catch (IntersectionNotFoundException
+                            | InvalidOrderException e){
+                        throw new InvalidNetworkException(
+                                "Invalid parameters for adding traffic light ("
+                                + e.getMessage() + ")"
+                        );
                     }
                 }
-                break;
-            case ROUTES:
-//                System.out.println("Finding routes range");
-                int startingIndex =
-                        getRange(file, SectionName.INTERSECTIONS).get(1) + 1;
-                range.set(0, startingIndex); // Lower bound
-                for (int i = startingIndex; i < numberOfLinesInFile; i++){
-                    SectionName sectionName = lineCategories.get(i);
-//                    System.out.println(file.get(i));
-                    if (sectionName != SectionName.ROUTES &&
-                        sectionName != SectionName.SENSORS){
-                        range.set(1, i-1); // Set to the previous
-                        break;
-                    }
-                }
-                if (range.get(1) == - 1){
-                    // We got to the end and it's all valid;
-                    range.set(1, numberOfLinesInFile);
-                }
-                break;
-
-        }
-
-        return range;
-    }
-
-     enum SectionName {
-        CONSTANTS,
-        INTERSECTIONS,
-        ROUTES,
-        SENSORS
-    }
-
-    /**
-     * A method to determine whether a given input string is a valid format
-     * for a sensor. Note that it does not check whether the value of fromID
-     * or toID is a valid route string.
-     * @param input the input string to compare
-     * @return true if string could be an intersection, false if there is a
-     * semantic error with the string.
-     */
-    private static boolean isSensorString(String input){
-        int delimiterInstances = countDelimiterInstances(input,
-                LINE_INFO_SEPARATOR);
-
-        if (delimiterInstances != 2){
-//            System.out.println("Incorrect number of delimiters - " +
-//                    delimiterInstances + " '" + input + "'");
-            return false;
-        }
-
-        int inputLength = input.length() - 1;
-        if (input.substring(0,1).equals(LINE_INFO_SEPARATOR)
-                || input.substring(inputLength, inputLength+1).equals(LINE_INFO_SEPARATOR)
-                || input.contains(LINE_INFO_SEPARATOR + LINE_INFO_SEPARATOR)){
-            // If the string's first or last character is the delimiter
-            // Or if there are two consecutive delimiters, we know that
-            // one parameter is empty
-//            System.out.println("Compartment empty");
-            return false;
-        }
-
-        String[] splits = input.split(LINE_INFO_SEPARATOR);
-
-        String sensorType = splits[0];
-        String threshold = splits[1];
-        String dataValues = splits[2];
-
-        if (!sensorType.equals("SC")
-                && !sensorType.equals("PP")
-                && !sensorType.equals("VC")){
-//            System.out.println("Invalid sensor type");
-            return false;
-        }
-
-        if (!isInteger(threshold)){
-//            System.out.println("Threshold value " + threshold + " not an " +
-//                    "integer");
-            return false;
-        }
-
-        if (Integer.parseInt(threshold) < 0){
-//            System.out.println("Threshold value " + threshold + " is negative");
-            return false;
-        }
-
-        String[] data = dataValues.split(LINE_LIST_SEPARATOR);
-
-        for (String datum : data){
-            try{
-                Integer.parseInt(datum);
-            } catch (NumberFormatException e){
-//                System.out.println("Data point " + datum + " is not an " +
-//                        "integer");
-                return false;
             }
+        }
+    }
 
-            if (Integer.parseInt(datum) < 0){
-//                System.out.println("Data point " + datum + " is negative");
-                return false;
+    public static void addSpeedSign(List<String> file, Network n) throws InvalidNetworkException {
+        for (int i = 3; i < file.size(); i++){
+            String line = file.get(i);
+            String[] components = line.split(LINE_INFO_SEPARATOR);
+            if (validRouteDefinition(line) && components.length == 5){
+                String from = components[0];
+                String to = components[1];
+                int defaultSpeed;
+
+                try{
+                    defaultSpeed = Integer.parseInt(components[4]);
+                } catch (NumberFormatException e){
+                    throw new InvalidNetworkException("Invalid default speed");
+                }
+
+                if (defaultSpeed < 0){
+                    // Is negative
+                    throw new InvalidNetworkException(
+                            "Invalid default speed (" + defaultSpeed + ")"
+                    );
+                }
+
+
+                // Has speed sign
+                try{
+                    n.addSpeedSign(from, to, defaultSpeed);
+                } catch (IntersectionNotFoundException
+                        | RouteNotFoundException e){
+                    throw new InvalidNetworkException("Logic error!");
+                }
+
+            }
+        }
+    }
+
+    private static void checkNumIntersections(List<String> file, Network n)
+        throws InvalidNetworkException {
+        int expected = getNumberOfIntersections(file);
+        int actual = n.getIntersections().size();
+
+        if (expected != actual){
+            throw new InvalidNetworkException("Mismatch between number of " +
+                    "intersections defined and declared");
+        }
+    }
+
+    private static void checkNumRoutes(List<String> file, Network n)
+            throws InvalidNetworkException {
+        int expected = getNumberOfRoutes(file);
+        int actual = getNumberOfInstantiatedRoutes(n);
+
+        if (expected != actual){
+            throw new InvalidNetworkException("Mismatch between number of " +
+                    "intersections defined and declared");
+        }
+    }
+
+    private static int getNumberOfInstantiatedRoutes(Network n){
+        String networkToString = n.toString();
+        String[] lines = networkToString.split(System.lineSeparator());
+        int numberOfInstantiatedRoutes = 0;
+
+        for (String line : lines){
+            if (validRouteDefinition(line)){
+                numberOfInstantiatedRoutes++;
             }
         }
 
-        return true;
+        return numberOfInstantiatedRoutes;
     }
 
-    private static int[] parseDelimitedString(String input, String delimiter) throws InvalidNetworkException {
-        String[] processedInput = input.split(delimiter);
-        int numberOfInputs = processedInput.length;
+    public static void checkNumSensors(List<String> file, Network n)
+        throws InvalidNetworkException{
 
-        int[] output = new int[numberOfInputs];
+        for (String line : file){
+            if (validRouteDefinition(line)){
+                String[] components = line.split(LINE_INFO_SEPARATOR);
 
-        for (int i = 0; i <numberOfInputs - 1; i++){
-            String datum = processedInput[i];
+                String from = components[0];
+                String to = components[1];
 
+                int numSensorsFromDefinition = Integer.parseInt(
+                        components[3]
+                );
+
+                int numSensors;
+
+                try{
+                    numSensors = n.getConnection(from, to).getSensors().size();
+                } catch (IntersectionNotFoundException |
+                        RouteNotFoundException e){
+                    throw new InvalidNetworkException("Logic error");
+                }
+
+                if (numSensors != numSensorsFromDefinition){
+                    throw new InvalidNetworkException("Mismatch between " +
+                            "defined number of sensors and instantiated " +
+                            "number of sensors");
+                } else System.out.println(
+                        "Number of sensors for (" + line + ") is ("
+                                + numSensors + ")"
+                );
+            }
+        }
+    }
+
+    public static List<String> parseLightOrder(String inputString, Network n)
+            throws InvalidNetworkException {
+        String[] parsedOrder = inputString.split(LINE_LIST_SEPARATOR);
+        List<String> order = new ArrayList<>();
+
+        for (String intersectionID : parsedOrder){
+            if (validIntersectionID(intersectionID)){
+
+                try{
+                    n.findIntersection(intersectionID);
+                } catch (IntersectionNotFoundException e){
+                    throw new InvalidNetworkException(
+                            "Intersection cannot be found in network ("
+                                    + intersectionID + ")"
+                    );
+                }
+
+                order.add(intersectionID);
+
+            } else throw new InvalidNetworkException(
+                    "Invalid ID. Cannot be the ID of an intersection. ("
+                            + intersectionID + ")"
+            );
+        }
+
+        return order;
+    }
+
+    private static int[] parseSensorData(String inputString)
+            throws InvalidNetworkException {
+        String[] unformattedData = inputString.split(LINE_LIST_SEPARATOR);
+        int[] data = new int[unformattedData.length];
+
+        for (int i = 0; i < unformattedData.length; i++){
+            String datum = unformattedData[i];
             if (isInteger(datum)){
-                output[i] = Integer.parseInt(processedInput[i]);
-            } else {
-                throw new InvalidNetworkException("Character at " + i + ", " +
-                        processedInput[i] + " is not an integer");
+                data[i] = Integer.parseInt(datum);
+            } else throw new InvalidNetworkException("Data to be parsed is " +
+                    "not an integer! (" + datum + ")");
+        }
+
+        return data;
+    }
+
+    private static boolean validSensorDefinition(String sensorString){
+        String[] components = sensorString.split(LINE_INFO_SEPARATOR);
+
+        // Incorrect number of delimiters, incorrect sensor definition;
+        if (components.length != 3) return false;
+
+        String type = components[0], threshold = components[1], data =
+                components[2];
+
+        boolean validType = false, validThreshold, validData = true;
+
+        // Add to this list when creating a new sensor type;
+        String[] sensorTypes = new String[] {"PP", "SC", "VC"};
+        for (String sensorType : sensorTypes){
+            if (type.equals(sensorType)) {
+                validType = true;
+                break;
             }
         }
 
-        return output;
+        validThreshold = isPositive(threshold);
+
+        for (String datum : data.split(LINE_LIST_SEPARATOR)){
+            if (!isNonNeg(datum)){
+                validData = false;
+            }
+        }
+
+        // Is only valid if all three sections are true;
+        return validType && validThreshold && validData;
     }
 
     /**
-     * A method to determine whether a given input string is a valid format
-     * for a route. Note that it does not check whether the value of fromID
-     * or toID is a valid route string.
-     * @param input the input string to compare
-     * @return true if string could be an intersection, false if there is a
-     * semantic error with the string.
+     *
+     * @param routeString string to be validated
+     * @return true if the string passed is a valid way of defining a route.
      */
-    private static boolean isRouteString(String input){
-        int delimiterInstances = countDelimiterInstances(input,
-                LINE_INFO_SEPARATOR);
+    private static boolean validRouteDefinition(String routeString) {
+        String[] components = routeString.split(LINE_INFO_SEPARATOR);
 
-        if (delimiterInstances == 3 || delimiterInstances == 4) {
-            // fromID : toID : defaultSpeed : numSensors
+        if (components.length == 4 || components.length == 5){
+            // Correct length
+            String from = components[0];
+            String to = components[1];
+            if (validIntersectionID(from) && validIntersectionID(to)){
+                // Now validate the default speed and number of sensors
+                String unformattedDefaultSpeed = components[2];
+                String unformattedNumOfSensors = components[3];
 
-            String[] splits = input.split(LINE_INFO_SEPARATOR);
-            int inputLength = input.length() - 1;
-            if (input.substring(0,1).equals(LINE_INFO_SEPARATOR)
-                    || input.substring(inputLength, inputLength+1).equals(LINE_INFO_SEPARATOR)
-                    || input.contains(LINE_INFO_SEPARATOR + LINE_INFO_SEPARATOR)){
-                // If the string's first or last character is the delimiter
-                // Or if there are two consecutive delimiters, we know that
-                // one parameter is empty
-//                System.out.println("Compartment empty");
-                return false;
-            }
+                if (isNonNeg(unformattedDefaultSpeed)
+                        && isNonNeg(unformattedNumOfSensors)){
+                    if (components.length == 5){
+                        // Has traffic light
+                        String unformattedSpeedSignSpeed = components[4];
+                        if (isNonNeg(unformattedSpeedSignSpeed)){
+                            // It's fine, return true
+                            return true;
+                        } else{
+                            System.out.println("- route spd is negative");
+                        }
+                    } else return true;
 
-            String defaultSpeed = splits[2];
-            String numSensors = splits[3];
-
-            if (!isInteger(defaultSpeed)) {
-//                System.out.println("Non-integer default speed " + defaultSpeed);
-                return false;
-            }
-
-            if (Integer.parseInt(defaultSpeed) < 0){
-//                System.out.println("Default speed " + defaultSpeed + "is " +
-//                        "negative");
-                return false;
-            }
-
-            if (!isInteger(numSensors)){
-//                System.out.println("Non-integer number of sensors "
-//                        + numSensors);
-                return false;
-            }
-
-            if (delimiterInstances == 4){
-                String speedSignSpeed = splits[4];
-                if (!isInteger(speedSignSpeed)){
-//                    System.out.println("SpeedSignSpeed not integer");
-                    return false;
-                }
-                if ((Integer.parseInt(speedSignSpeed) < 0)){
-                    // If negative
-//                    System.out.println("SpeedSignSpeed invalid bounds"
-//                            + speedSignSpeed);
-                    return false;
                 }
 
-                // If the speed sign speed is positive or negative.
             }
-
-            String fromID = splits[0];
-            String toID = splits[1];
-
-            //System.out.println("Invalid to or from id" + fromID + "|" + toID);
-            return isValidIntersectionID(fromID)
-                    && isValidIntersectionID(toID);
         }
-//        System.out.println("Invalid number of delimiters " + delimiterInstances);
         return false;
     }
 
-
-    /**
-     * A method to determine whether a given input string is a valid format
-     * for an intersection. Note that it does not check whether the traffic
-     * lights order parameter contains intersections that exist.
-     * @param input the input string to compare
-     * @return true if string could be an intersection, false if there is a
-     * semantic error with the string.
-     */
-    private static boolean isIntersectionString(String input){
-        int delimiterInstances = countDelimiterInstances(input,
-                LINE_INFO_SEPARATOR);
-
-        if (delimiterInstances == 0){
-            // Just intersectionID by itself, e.g. 'X'
-            //return isValidIntersectionID(input);
-
-            return isValidIntersectionID(input);
-
-        }
-        if (delimiterInstances == 2){
-
-            // Check if delimiters are empty.
-            int inputLength = input.length() - 1;
-
-            if (input.substring(0,1).equals(LINE_INFO_SEPARATOR)
-                || input.substring(inputLength, inputLength+1).equals(LINE_INFO_SEPARATOR)
-                || input.contains(LINE_INFO_SEPARATOR + LINE_INFO_SEPARATOR)){
-                // If the string's first or last character is the delimiter
-                // Or if there are two consecutive delimiters, we know that
-                // one parameter is empty
-//                System.out.println("Compartment empty");
-                return false;
-            }
-
-            String duration = input.split(LINE_INFO_SEPARATOR)[1];
-            if (!isInteger(duration)) {
-//                System.out.println("Duration of " + duration + " is invalid");
-                return false;
-            }
-            String intersectionID = input.split(LINE_INFO_SEPARATOR)[0];
-            return isValidIntersectionID(intersectionID);
-        }
-//        System.out.println(input + " - Invalid because number of delimiter " +
-//                "characters - " + delimiterInstances);
-        return false; // If the number of delimiter instances does not match;
+    private static int getNumberOfIntersections(List<String> file)
+            throws InvalidNetworkException {
+        int numberOfIntersections = Integer.parseInt(file.get(0));
+        if (numberOfIntersections >= 0){
+            return numberOfIntersections;
+        } throw new InvalidNetworkException("Invalid number of intersections");
     }
 
-    private static boolean isValidIntersectionID(String ID){
-        return !ID.equals("PP") &&
-                !ID.equals("SC") &&
-                !ID.equals("VC") &&
-                ID.length() != 0; // TODO @1232
+    private static int getNumberOfRoutes(List<String> file){
+        return Integer.parseInt(file.get(1));
     }
 
-    private static boolean isInteger(String input){
+    private static int getYellowTime(List<String> file){
+        return Integer.parseInt(file.get(2));
+    }
+
+    private static boolean validIntersectionDefinition(String intersectionStr){
+        String[] components = intersectionStr.split(LINE_INFO_SEPARATOR);
+        int length = components.length;
+        if (length == 1 || length == 3){
+            String id = components[0];
+            if (validIntersectionID(id)){
+                if (length == 3){
+                    String duration = components[1], order = components[2];
+
+                    if (isPositive(duration)){
+                        for (String s : order.split(LINE_LIST_SEPARATOR)){
+                            if (!validIntersectionID(s)){
+                                return false;
+                            }
+                        }
+                        // Case for intersection with lights
+                        return true;
+                    }
+                    // Case for intersection without lights.
+                } else return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean validIntersectionID(String intersectionID){
+        String[] forbiddenIDs = {"PP", "SC", "VC"};
+
+        for (String forbiddenID : forbiddenIDs){
+            if (intersectionID.equals(forbiddenID)){
+                return false;
+            }
+        }
+
+        return isNotWhitespace(intersectionID);
+    }
+
+    private static boolean isPositive(String toCompare){
+        return isNonNeg(toCompare) && Integer.parseInt(toCompare) != 0;
+    }
+
+    private static boolean isNonNeg(String toCompare){
+        return isInteger(toCompare) && Integer.parseInt(toCompare) >= 0;
+    }
+
+    private static boolean isInteger(String toCompare){
         try{
-            Integer.parseInt(input);
+            Integer.parseInt(toCompare);
         } catch (NumberFormatException e){
             return false;
         }
-
         return true;
+    }
+
+    /**
+     * A method to determine whether a string is completely comprised of
+     * whitespace characters. Whitespace characters are defined as:
+     * 1) Tab character (\t)
+     * 2) Space character ( )
+     * 3) New line character (Given by System.lineSeparator())
+     * @param str the string to compare
+     * @return true if contains at least one non whitespace character. False
+     * otherwise.
+     */
+    private static boolean isNotWhitespace(String str){
+        return (str.trim().length() != 0);
+    }
+
+    private static List<String> read(String filename) throws IOException,
+            InvalidNetworkException{
+        List<String> file = new ArrayList<>();
+        final char startOfComment = ';';
+        Scanner scanner = new Scanner(new File(filename));
+
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+
+            if (line.length() == 0) {
+                // To avoid NPE below, check line length.
+                file.add(System.lineSeparator());
+            } else if (line.charAt(0) != startOfComment) {
+                // Don't add lines which are comments.
+                if (validIntersectionDefinition(line) ||
+                    validRouteDefinition(line) ||
+                    validSensorDefinition(line) ||
+                    isInteger(line)){
+                    file.add(line);
+                } else {
+                    throw new InvalidNetworkException(
+                            "Invalid line (" + line + ")"
+                    );
+                }
+            }
+        }
+        // Check that the only blank lines are on the last two (optionally)
+        checkBlankLines(file);
+
+        // Check that file is at least 3 lines long (length of empty network).
+        if (file.size() < 3) {
+            throw new InvalidNetworkException(
+                    "File must be at least 3 lines long. (" + file.size()+ ") "
+                    + filename
+            );
+        }
+
+        return file;
+    }
+
+    /**
+     * A method which checks that the only blank lines in the file are
+     * (optionally) the last two lines.
+     * @param file the file object to check through
+     * @throws InvalidNetworkException If there are blank lines at incorrect
+     * locations.
+     */
+    private static void checkBlankLines(List<String> file)
+            throws InvalidNetworkException {
+        for (int lineNumber = 1; lineNumber < file.size(); lineNumber++){
+            String line = file.get(lineNumber - 1);
+
+            if (line.equals(System.lineSeparator())){
+                if (lineNumber <= file.size() - 2){
+                    throw new InvalidNetworkException(
+                            "Invalid Linebreak at line " + lineNumber + " " +
+                                    "with file size + " + file.size()
+                    );
+                } else System.out.println(lineNumber + "|" + (file.size() - 2));
+            }
+        }
     }
 }
